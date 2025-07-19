@@ -54,12 +54,51 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
   const [isAccountingCollapsed, setIsAccountingCollapsed] = useState(false);
   const [expandedWarehouses, setExpandedWarehouses] = useState<string[]>([]);
 
+  // Helper function to check if current page matches store page
+  const isCurrentStorePage = (pageType: string, storeId: number) => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPageParam = urlParams.get('page');
+    return currentPageParam === `${pageType}/${storeId}`;
+  };
+
+  // Helper function to check if current page matches warehouse page
+  const isCurrentWarehousePage = (pageType: string, warehouseId: string) => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPageParam = urlParams.get('page');
+    return currentPageParam === `${pageType}/${warehouseId}`;
+  };
+
   useEffect(() => {
     if (supabaseUser?.id) {
       fetchStores();
+      fetchWarehouses();
+    } else {
+      fetchWarehouses();
     }
-    fetchWarehouses();
   }, [supabaseUser]);
+
+  // Auto-expand store if user is on a store page
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPageParam = urlParams.get('page');
+    
+    if (currentPageParam && (currentPageParam.startsWith('product/') || 
+        currentPageParam.startsWith('sales/') || 
+        currentPageParam.startsWith('withdrawal/'))) {
+      const storeId = parseInt(currentPageParam.split('/')[1]);
+      if (!expandedStores.includes(storeId)) {
+        setExpandedStores(prev => [...prev, storeId]);
+      }
+    }
+    
+    // Auto-expand warehouse if user is on a warehouse page
+    if (currentPageParam && currentPageParam.startsWith('warehouse-products/')) {
+      const warehouseId = currentPageParam.split('/')[1];
+      if (!expandedWarehouses.includes(warehouseId)) {
+        setExpandedWarehouses(prev => [...prev, warehouseId]);
+      }
+    }
+  }, [stores, expandedStores]);
 
   const fetchStores = async () => {
     try {
@@ -85,15 +124,18 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
       const { data, error } = await supabaseAdmin
         .from('warehouses')
         .select('id, name, location, is_active')
+        .eq('user_id', supabaseUser?.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (error) {
+        console.error('Error fetching warehouses:', error);
         return;
       }
       
       setWarehouses(data || []);
     } catch (err) {
+      console.error('Error in fetchWarehouses:', err);
     }
   };
 
@@ -146,11 +188,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
               onClick={() => setCurrentPage(item.id)}
               className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition-all text-sm ${
                 currentPage === item.id
-                  ? 'bg-primary text-white shadow-md'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-gray-100 text-gray-800 shadow-sm'
+                  : 'text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <item.icon className="w-4 h-4" />
+              <item.icon className="w-4 h-4 text-gray-500" />
               <span className="font-medium">{item.label}</span>
             </button>
           ))}
@@ -159,18 +201,18 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
             {/* Integration Section */}
             <button
               onClick={() => setIsIntegrationCollapsed(!isIntegrationCollapsed)}
-              className="w-full flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+              className="w-full flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-all"
             >
               <div className="flex items-center space-x-2">
-                <Settings className="w-4 h-4 text-blue-500" />
+                <Settings className="w-4 h-4 text-gray-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider">
                   Integration
                 </span>
               </div>
               {isIntegrationCollapsed ? (
-                <ChevronRight className="w-3 h-3" />
+                <ChevronRight className="w-3 h-3 text-gray-500" />
               ) : (
-                <ChevronDown className="w-3 h-3" />
+                <ChevronDown className="w-3 h-3 text-gray-500" />
               )}
             </button>
             
@@ -182,7 +224,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
                     onClick={() => setCurrentPage(item.id)}
                     className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
                       currentPage === item.id
-                        ? 'bg-blue-100 text-blue-700'
+                        ? 'bg-gray-100 text-gray-800 shadow-sm'
                         : 'text-gray-600 hover:bg-gray-50'
                     }`}
                   >
@@ -195,18 +237,18 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
             {/* Accounting Section */}
             <button
               onClick={() => setIsAccountingCollapsed(!isAccountingCollapsed)}
-              className="w-full flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all mt-2"
+              className="w-full flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-all mt-2"
             >
               <div className="flex items-center space-x-2">
-                <Calculator className="w-4 h-4 text-green-500" />
+                <Calculator className="w-4 h-4 text-gray-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider">
                   Accounting
                 </span>
               </div>
               {isAccountingCollapsed ? (
-                <ChevronRight className="w-3 h-3" />
+                <ChevronRight className="w-3 h-3 text-gray-500" />
               ) : (
-                <ChevronDown className="w-3 h-3" />
+                <ChevronDown className="w-3 h-3 text-gray-500" />
               )}
             </button>
             
@@ -218,7 +260,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
                     onClick={() => setCurrentPage(item.id)}
                     className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
                       currentPage === item.id
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-gray-100 text-gray-800 shadow-sm'
                         : 'text-gray-600 hover:bg-gray-50'
                     }`}
                   >
@@ -231,18 +273,18 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
             {/* Toko Aktif Section */}
             <button
               onClick={() => setIsStoresCollapsed(!isStoresCollapsed)}
-              className="w-full flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all mt-2"
+              className="w-full flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-all mt-2"
             >
               <div className="flex items-center space-x-2">
-                <Store className="w-4 h-4 text-primary" />
+                <Store className="w-4 h-4 text-gray-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider">
                   Toko Aktif ({stores.length})
                 </span>
               </div>
               {isStoresCollapsed ? (
-                <ChevronRight className="w-3 h-3" />
+                <ChevronRight className="w-3 h-3 text-gray-500" />
               ) : (
-                <ChevronDown className="w-3 h-3" />
+                <ChevronDown className="w-3 h-3 text-gray-500" />
               )}
             </button>
             
@@ -253,16 +295,21 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
                     <div key={store.id} className="space-y-1">
                       <button
                         onClick={() => toggleStore(store.id)}
-                        className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${
+                          isCurrentStorePage('product', store.id) || 
+                          isCurrentStorePage('sales', store.id) || 
+                          isCurrentStorePage('withdrawal', store.id)
+                            ? 'bg-gray-50 text-gray-800'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
                       >
                         <div className="flex items-center space-x-2">
-                          <div className={`w-2 h-2 rounded-full ${store.store_type === 'online' ? 'bg-primary' : 'bg-secondary'}`}></div>
                           <span className="text-sm font-medium truncate">{store.name}</span>
                         </div>
                         {expandedStores.includes(store.id) ? (
-                          <ChevronDown className="w-3 h-3 flex-shrink-0" />
+                          <ChevronDown className="w-3 h-3 flex-shrink-0 text-gray-500" />
                         ) : (
-                          <ChevronRight className="w-3 h-3 flex-shrink-0" />
+                          <ChevronRight className="w-3 h-3 flex-shrink-0 text-gray-500" />
                         )}
                       </button>
                       
@@ -277,21 +324,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
                               window.history.pushState({}, '', url.toString());
                             }}
                             className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs font-medium ${
-                              (currentPage === 'product' && window.location.search.includes(`product/${store.id}`)) ||
-                              window.location.search === `?page=product/${store.id}`
-                                ? 'bg-primary text-white shadow-sm'
-                                : 'text-gray-600 hover:bg-primary/10 hover:text-primary'
+                              isCurrentStorePage('product', store.id)
+                                ? 'bg-gray-100 text-gray-800 shadow-sm'
+                                : 'text-gray-600 hover:bg-gray-50'
                             }`}
                           >
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-1.5 h-1.5 rounded-full ${
-                                (currentPage === 'product' && window.location.search.includes(`product/${store.id}`)) ||
-                                window.location.search === `?page=product/${store.id}`
-                                  ? 'bg-white'
-                                  : 'bg-primary'
-                              }`}></div>
-                              <span>Product</span>
-                            </div>
+                            <span>Product</span>
                           </button>
                           <button
                             onClick={() => {
@@ -301,21 +339,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
                               window.history.pushState({}, '', url.toString());
                             }}
                             className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs font-medium ${
-                              (currentPage === 'sales' && window.location.search.includes(`sales/${store.id}`)) ||
-                              window.location.search === `?page=sales/${store.id}`
-                                ? 'bg-primary text-white shadow-sm'
-                                : 'text-gray-600 hover:bg-primary/10 hover:text-primary'
+                              isCurrentStorePage('sales', store.id)
+                                ? 'bg-gray-100 text-gray-800 shadow-sm'
+                                : 'text-gray-600 hover:bg-gray-50'
                             }`}
                           >
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-1.5 h-1.5 rounded-full ${
-                                (currentPage === 'sales' && window.location.search.includes(`sales/${store.id}`)) ||
-                                window.location.search === `?page=sales/${store.id}`
-                                  ? 'bg-white'
-                                  : 'bg-primary'
-                              }`}></div>
-                              <span>Sales</span>
-                            </div>
+                            <span>Sales</span>
                           </button>
                           <button
                             onClick={() => {
@@ -325,21 +354,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
                               window.history.pushState({}, '', url.toString());
                             }}
                             className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs font-medium ${
-                              (currentPage === 'withdrawal' && window.location.search.includes(`withdrawal/${store.id}`)) ||
-                              window.location.search === `?page=withdrawal/${store.id}`
-                                ? 'bg-primary text-white shadow-sm'
-                                : 'text-gray-600 hover:bg-primary/10 hover:text-primary'
+                              isCurrentStorePage('withdrawal', store.id)
+                                ? 'bg-gray-100 text-gray-800 shadow-sm'
+                                : 'text-gray-600 hover:bg-gray-50'
                             }`}
                           >
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-1.5 h-1.5 rounded-full ${
-                                (currentPage === 'withdrawal' && window.location.search.includes(`withdrawal/${store.id}`)) ||
-                                window.location.search === `?page=withdrawal/${store.id}`
-                                  ? 'bg-white'
-                                  : 'bg-primary'
-                              }`}></div>
-                              <span>Withdrawal</span>
-                            </div>
+                            <span>Withdrawal</span>
                           </button>
                         </div>
                       )}
@@ -356,18 +376,18 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
             {/* Warehouse Section */}
             <button
               onClick={() => setIsWarehousesCollapsed(!isWarehousesCollapsed)}
-              className="w-full flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all mt-2"
+              className="w-full flex items-center justify-between px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-all mt-2"
             >
               <div className="flex items-center space-x-2">
-                <Warehouse className="w-4 h-4 text-secondary" />
+                <Warehouse className="w-4 h-4 text-gray-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider">
                   Warehouse ({warehouses.length})
                 </span>
               </div>
               {isWarehousesCollapsed ? (
-                <ChevronRight className="w-3 h-3" />
+                <ChevronRight className="w-3 h-3 text-gray-500" />
               ) : (
-                <ChevronDown className="w-3 h-3" />
+                <ChevronDown className="w-3 h-3 text-gray-500" />
               )}
             </button>
             
@@ -378,37 +398,37 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
                     <div key={warehouse.id} className="space-y-1">
                       <button
                         onClick={() => toggleWarehouse(warehouse.id)}
-                        className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${
+                          isCurrentWarehousePage('warehouse-products', warehouse.id)
+                            ? 'bg-gray-50 text-gray-800'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
                       >
-                        <div className="flex flex-col items-start">
-                          <span className="text-sm font-medium truncate">{warehouse.name}</span>
-                          <span className="text-xs text-gray-500">{warehouse.location || 'No location'}</span>
-                        </div>
+                        <span className="text-sm font-medium truncate">{warehouse.name}</span>
                         {expandedWarehouses.includes(warehouse.id) ? (
-                          <ChevronDown className="w-3 h-3 flex-shrink-0" />
+                          <ChevronDown className="w-3 h-3 flex-shrink-0 text-gray-500" />
                         ) : (
-                          <ChevronRight className="w-3 h-3 flex-shrink-0" />
+                          <ChevronRight className="w-3 h-3 flex-shrink-0 text-gray-500" />
                         )}
                       </button>
                       
                       {expandedWarehouses.includes(warehouse.id) && (
                         <div className="ml-4 space-y-1">
                           <button
-                            onClick={() => setCurrentPage('warehouse-products')}
+                            onClick={() => {
+                              setCurrentPage(`warehouse-products/${warehouse.id}`);
+                              // Update URL to reflect the current warehouse
+                              const url = new URL(window.location.href);
+                              url.searchParams.set('page', `warehouse-products/${warehouse.id}`);
+                              window.history.pushState({}, '', url.toString());
+                            }}
                             className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs font-medium ${
-                              currentPage === 'warehouse-products'
-                                ? 'bg-secondary text-white shadow-sm'
-                                : 'text-gray-600 hover:bg-secondary/10 hover:text-secondary'
+                              isCurrentWarehousePage('warehouse-products', warehouse.id)
+                                ? 'bg-gray-100 text-gray-800 shadow-sm'
+                                : 'text-gray-600 hover:bg-gray-50'
                             }`}
                           >
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-1.5 h-1.5 rounded-full ${
-                                currentPage === 'warehouse-products'
-                                  ? 'bg-white'
-                                  : 'bg-secondary'
-                              }`}></div>
-                              <span>Manage Product</span>
-                            </div>
+                            <span>Manage Product</span>
                           </button>
                         </div>
                       )}

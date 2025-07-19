@@ -98,7 +98,7 @@ function App() {
 
   const handlePageChange = (page: string) => {
     // Parse page and store ID if it's a product page
-    if (page.startsWith('product/') || page.startsWith('sales/') || page.startsWith('withdrawal/')) {
+    if (page.startsWith('product/') || page.startsWith('sales/') || page.startsWith('withdrawal/') || page.startsWith('warehouse-products/')) {
       const storeId = page.split('/')[1];
       setCurrentStoreId(storeId);
       setCurrentPage(page.split('/')[0]);
@@ -117,7 +117,7 @@ function App() {
       const urlParams = new URLSearchParams(window.location.search);
       const page = urlParams.get('page') || 'dashboard';
       
-      if (page.startsWith('product/') || page.startsWith('sales/') || page.startsWith('withdrawal/')) {
+      if (page.startsWith('product/') || page.startsWith('sales/') || page.startsWith('withdrawal/') || page.startsWith('warehouse-products/')) {
         const storeId = page.split('/')[1];
         setCurrentStoreId(storeId);
         setCurrentPage(page.split('/')[0]);
@@ -148,7 +148,7 @@ function App() {
       case 'withdrawal':
         return <WithdrawalManagement storeId={currentStoreId} />;
       case 'warehouse-products':
-        return <WarehouseProducts />;
+        return <WarehouseProducts warehouseId={currentStoreId} />;
       case 'integration-store':
         return <IntegrationStore />;
       case 'integration-warehouse':

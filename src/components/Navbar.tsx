@@ -37,7 +37,7 @@ const Navbar: React.FC = () => {
               />
             </div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-tertiary bg-clip-text text-transparent">
-              Admin Dashboard
+              Coreopz Dashboard
             </h1>
           </div>
           

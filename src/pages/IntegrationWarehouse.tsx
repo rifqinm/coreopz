@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Warehouse, Plus, Settings, Link, CheckCircle, XCircle, RefreshCw, MapPin } from 'lucide-react';
+import { Warehouse, Plus, CheckCircle, XCircle, MapPin, MoreVertical, Eye, Edit, Trash2 } from 'lucide-react';
 import { supabaseAdmin } from '../config/supabaseAdmin';
+import { useAuth } from '../contexts/AuthContext';
+import CreateWarehouseModal from '../components/common/CreateWarehouseModal';
+import EditWarehouseModal from '../components/common/EditWarehouseModal';
 
 interface WarehouseData {
   id: string;
@@ -13,17 +16,19 @@ interface WarehouseData {
 }
 
 interface WarehouseIntegration extends WarehouseData {
-  system: string;
   status: 'connected' | 'disconnected' | 'error';
-  lastSync: string;
-  products: number;
-  capacity: number;
+  productCount: number;
 }
 
 const IntegrationWarehouse: React.FC = () => {
   const [integrations, setIntegrations] = useState<WarehouseIntegration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingWarehouse, setEditingWarehouse] = useState<WarehouseIntegration | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const { supabaseUser } = useAuth();
 
   useEffect(() => {
     fetchWarehouses();
@@ -32,21 +37,43 @@ const IntegrationWarehouse: React.FC = () => {
   const fetchWarehouses = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabaseAdmin
+      
+      let query = supabaseAdmin
         .from('warehouses')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      // Filter by user if authenticated
+      if (supabaseUser?.id) {
+        query = query.eq('user_id', supabaseUser.id);
+      }
+      
+      const { data, error } = await query;
 
       if (error) throw error;
+
+      // Get product counts for each warehouse
+      const warehouseIds = (data || []).map(warehouse => warehouse.id);
+      const { data: productCounts, error: productError } = await supabaseAdmin
+        .from('warehouse_products')
+        .select('warehouse_id')
+        .in('warehouse_id', warehouseIds);
+
+      if (productError) {
+        console.error('Error fetching product counts:', productError);
+      }
+
+      // Count products per warehouse
+      const productCountMap = (productCounts || []).reduce((acc, product) => {
+        acc[product.warehouse_id] = (acc[product.warehouse_id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
 
       // Transform data to include integration-specific fields
       const transformedData: WarehouseIntegration[] = (data || []).map(warehouse => ({
         ...warehouse,
-        system: ['SAP WMS', 'Oracle WMS', 'Custom WMS', 'Manhattan WMS'][Math.floor(Math.random() * 4)],
         status: warehouse.is_active ? 'connected' : 'disconnected' as 'connected' | 'disconnected' | 'error',
-        lastSync: new Date(Date.now() - Math.random() * 86400000).toISOString().slice(0, 16).replace('T', ' '),
-        products: Math.floor(Math.random() * 2000) + 500,
-        capacity: Math.floor(Math.random() * 40) + 40 // 40-80%
+        productCount: productCountMap[warehouse.id] || 0
       }));
 
       setIntegrations(transformedData);
@@ -83,19 +110,71 @@ const IntegrationWarehouse: React.FC = () => {
     }
   };
 
-  const getCapacityColor = (capacity: number) => {
-    if (capacity >= 80) return 'text-red-600';
-    if (capacity >= 60) return 'text-yellow-600';
-    return 'text-green-600';
+  const handleWarehouseCreated = () => {
+    // Refresh the warehouses list after creating a new warehouse
+    fetchWarehouses();
   };
 
-  const handleSync = async (warehouseId: string) => {
-    // Simulate sync process
-    setIntegrations(prev => prev.map(warehouse => 
-      warehouse.id === warehouseId 
-        ? { ...warehouse, lastSync: new Date().toISOString().slice(0, 16).replace('T', ' ') }
-        : warehouse
-    ));
+  const handleWarehouseUpdated = () => {
+    // Refresh the warehouses list after updating a warehouse
+    fetchWarehouses();
+    setIsEditModalOpen(false);
+    setEditingWarehouse(null);
+  };
+
+  const handleViewProducts = (warehouseId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', `warehouse-products/${warehouseId}`);
+    window.history.pushState({}, '', url.toString());
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
+  const handleDeleteWarehouse = async (warehouseId: string) => {
+    if (!confirm('Are you sure you want to delete this warehouse? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // First delete all warehouse_products associated with this warehouse
+      const { error: productsError } = await supabaseAdmin
+        .from('warehouse_products')
+        .delete()
+        .eq('warehouse_id', warehouseId);
+
+      if (productsError) {
+        console.error('Error deleting warehouse products:', productsError);
+        // Continue with warehouse deletion even if products deletion fails
+      }
+
+      // Then delete the warehouse
+      const { error } = await supabaseAdmin
+        .from('warehouses')
+        .delete()
+        .eq('id', warehouseId);
+
+      if (error) throw error;
+
+      // Remove from local state
+      setIntegrations(prev => prev.filter(warehouse => warehouse.id !== warehouseId));
+      setOpenDropdown(null);
+      
+      alert('Warehouse and all associated products have been deleted successfully.');
+    } catch (err: any) {
+      alert('Failed to delete warehouse: ' + err.message);
+    }
+  };
+
+  const handleEditWarehouse = (warehouseId: string) => {
+    const warehouse = integrations.find(w => w.id === warehouseId);
+    if (warehouse) {
+      setEditingWarehouse(warehouse);
+      setIsEditModalOpen(true);
+    }
+    setOpenDropdown(null);
+  };
+
+  const toggleDropdown = (warehouseId: string) => {
+    setOpenDropdown(openDropdown === warehouseId ? null : warehouseId);
   };
 
   if (loading) {
@@ -128,14 +207,17 @@ const IntegrationWarehouse: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-800">Warehouse Integration</h1>
           <p className="text-gray-600 mt-1">Manage warehouse management system connections</p>
         </div>
-        <button className="flex items-center space-x-2 bg-secondary text-white px-6 py-3 rounded-lg hover:bg-secondary/90 transition-all shadow-lg">
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="flex items-center space-x-2 bg-secondary text-white px-6 py-3 rounded-lg hover:bg-secondary/90 transition-all shadow-lg"
+        >
           <Plus className="w-5 h-5" />
-          <span>Add Integration</span>
+          <span>Create Warehouse</span>
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-md">
           <div className="flex items-center justify-between">
             <div>
@@ -162,23 +244,10 @@ const IntegrationWarehouse: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Products</p>
-              <p className="text-2xl font-bold text-purple-600">{integrations.reduce((sum, i) => sum + i.products, 0)}</p>
+              <p className="text-2xl font-bold text-purple-600">{integrations.reduce((sum, i) => sum + i.productCount, 0)}</p>
             </div>
             <div className="bg-purple-100 p-3 rounded-lg">
               <Warehouse className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Avg Capacity</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {integrations.length > 0 ? Math.round(integrations.reduce((sum, i) => sum + i.capacity, 0) / integrations.length) : 0}%
-              </p>
-            </div>
-            <div className="bg-orange-100 p-3 rounded-lg">
-              <Warehouse className="w-6 h-6 text-orange-600" />
             </div>
           </div>
         </div>
@@ -212,59 +281,69 @@ const IntegrationWarehouse: React.FC = () => {
               
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">System:</span>
-                  <span className="font-medium">{integration.system}</span>
-                </div>
-                <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Products:</span>
-                  <span className="font-medium">{integration.products.toLocaleString()}</span>
+                  <span className="font-medium">{integration.productCount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Capacity:</span>
-                  <span className={`font-medium ${getCapacityColor(integration.capacity)}`}>
-                    {integration.capacity}%
-                  </span>
+                  <span className="text-gray-600">Status:</span>
+                  <span className="font-medium capitalize">{integration.is_active ? 'Active' : 'Inactive'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Last Sync:</span>
-                  <span className="font-medium">{integration.lastSync}</span>
+                  <span className="text-gray-600">Created:</span>
+                  <span className="font-medium">{new Date(integration.created_at).toLocaleDateString('id-ID')}</span>
                 </div>
-                {integration.description && (
-                  <div className="text-sm text-gray-600 mt-2">
-                    <p className="truncate">{integration.description}</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Capacity Bar */}
-              <div className="mt-4">
-                <div className="flex justify-between text-xs text-gray-600 mb-1">
-                  <span>Storage Capacity</span>
-                  <span>{integration.capacity}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full ${
-                      integration.capacity >= 80 ? 'bg-quaternary' :
-                      integration.capacity >= 60 ? 'bg-secondary' : 'bg-primary'
-                    }`}
-                    style={{ width: `${integration.capacity}%` }}
-                  ></div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Location:</span>
+                  <span className="font-medium">{integration.location || 'Not set'}</span>
                 </div>
               </div>
               
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
-                <button 
-                  onClick={() => handleSync(integration.id)}
-                  className="flex items-center space-x-1 text-secondary hover:text-secondary/80 transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span className="text-sm">Sync Now</span>
-                </button>
-                <button className="flex items-center space-x-1 text-gray-600 hover:text-gray-800 transition-colors">
-                  <Settings className="w-4 h-4" />
-                  <span className="text-sm">Settings</span>
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => toggleDropdown(integration.id)}
+                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                  
+                  {openDropdown === integration.id && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setOpenDropdown(null)}
+                      ></div>
+                      <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        <div className="py-1">
+                          <button
+                            onClick={() => handleViewProducts(integration.id)}
+                            className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            <Eye className="w-4 h-4 text-blue-500" />
+                            <span>View Products</span>
+                          </button>
+                          <button
+                            onClick={() => handleEditWarehouse(integration.id)}
+                            className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            <Edit className="w-4 h-4 text-green-500" />
+                            <span>Edit Warehouse</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteWarehouse(integration.id)}
+                            className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Delete Warehouse</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500">
+                  ID: {integration.id}
+                </div>
               </div>
             </div>
           ))}
@@ -276,6 +355,24 @@ const IntegrationWarehouse: React.FC = () => {
           <p className="text-gray-400 text-sm mt-2">Create your first warehouse to get started</p>
         </div>
       )}
+
+      {/* Create Warehouse Modal */}
+      <CreateWarehouseModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onWarehouseCreated={handleWarehouseCreated}
+      />
+
+      {/* Edit Warehouse Modal */}
+      <EditWarehouseModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingWarehouse(null);
+        }}
+        warehouse={editingWarehouse}
+        onWarehouseUpdated={handleWarehouseUpdated}
+      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Package, Edit, Trash2, Eye, Search, Filter } from 'lucide-react';
+import { Plus, Package, Edit, Trash2, Eye, Search, Filter, MoreVertical, Upload } from 'lucide-react';
 import StatusBadge from '../components/common/StatusBadge';
+import FileUploadModal from '../components/common/FileUploadModal';
 import { supabaseAdmin } from '../config/supabaseAdmin';
 
 interface MarketplaceProduct {
@@ -34,9 +35,11 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
   const [store, setStore] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMarketplace, setFilterMarketplace] = useState('all');
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   const marketplaces = ['shopee', 'tokopedia', 'lazada', 'tiktok'];
 
@@ -89,6 +92,10 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
   });
 
   const handleDeleteProduct = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+      return;
+    }
+
     try {
       const { error } = await supabaseAdmin
         .from('marketplace_products')
@@ -98,8 +105,36 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
       if (error) throw error;
       
       setProducts(products.filter(product => product.id !== id));
+      setOpenDropdown(null);
+      
+      // Show success message
+      alert('Product deleted successfully.');
     } catch (err: any) {
-      setError(err.message);
+      alert('Failed to delete product: ' + err.message);
+    }
+  };
+
+  const toggleDropdown = (productId: string) => {
+    setOpenDropdown(openDropdown === productId ? null : productId);
+  };
+
+  const handleAction = (action: string, product: MarketplaceProduct) => {
+    setOpenDropdown(null);
+    
+    switch (action) {
+      case 'view':
+        // Handle view action
+        console.log('View product:', product);
+        break;
+      case 'edit':
+        // Handle edit action
+        console.log('Edit product:', product);
+        break;
+      case 'delete':
+        if (confirm('Are you sure you want to delete this product?')) {
+          handleDeleteProduct(product.id.toString());
+        }
+        break;
     }
   };
 
@@ -156,39 +191,32 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
             </button>
           </div>
           <h1 className="text-3xl font-bold text-gray-800">
-            {store ? `${store.name} - Products` : 'Store Products'}
+            {store ? `${store.name} - Products (${store.platform_enum})` : 'Store Products'}
           </h1>
           <p className="text-gray-600 mt-1">
             Manage marketplace products for this store
           </p>
         </div>
-        <button className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl">
-          <Plus className="w-5 h-5" />
-          <span>Add Product</span>
-        </button>
-      </div>
-
-      {/* Store Info Card */}
-      {store && (
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold">{store.name}</h2>
-              <p className="opacity-90">
-                {store.store_type} • {store.platform_enum}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold">{products.length}</p>
-              <p className="text-sm opacity-90">Total Products</p>
-            </div>
-          </div>
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={() => setIsUploadModalOpen(true)}
+            className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-blue-600 transition-all shadow-lg hover:shadow-xl"
+          >
+            <Upload className="w-5 h-5" />
+            <span>Upload Products</span>
+          </button>
+          <button 
+            className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Add Product</span>
+          </button>
         </div>
-      )}
+      </div>
 
       {/* Search and Filter */}
       <div className="bg-white p-6 rounded-xl shadow-md">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -196,23 +224,8 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Package className="w-5 h-5 text-gray-400" />
-            <select
-              value={filterMarketplace}
-              onChange={(e) => setFilterMarketplace(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Marketplaces</option>
-              {marketplaces.map(marketplace => (
-                <option key={marketplace} value={marketplace}>
-                  {marketplace.charAt(0).toUpperCase() + marketplace.slice(1)}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
       </div>
@@ -223,10 +236,10 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Products</p>
-              <p className="text-2xl font-bold text-gray-800">{products.length}</p>
+              <p className="text-2xl font-bold text-primary">{products.length}</p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <Package className="w-6 h-6 text-blue-600" />
+            <div className="bg-primary/20 p-3 rounded-lg">
+              <Package className="w-6 h-6 text-primary" />
             </div>
           </div>
         </div>
@@ -234,10 +247,10 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Shopee Products</p>
-              <p className="text-2xl font-bold text-green-600">{products.filter(p => p.marketplace === 'shopee').length}</p>
+              <p className="text-2xl font-bold text-tertiary">{products.filter(p => p.marketplace === 'shopee').length}</p>
             </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <Package className="w-6 h-6 text-green-600" />
+            <div className="bg-tertiary/20 p-3 rounded-lg">
+              <Package className="w-6 h-6 text-tertiary" />
             </div>
           </div>
         </div>
@@ -245,10 +258,10 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Tokopedia Products</p>
-              <p className="text-2xl font-bold text-orange-600">{products.filter(p => p.marketplace === 'tokopedia').length}</p>
+              <p className="text-2xl font-bold text-secondary">{products.filter(p => p.marketplace === 'tokopedia').length}</p>
             </div>
-            <div className="bg-orange-100 p-3 rounded-lg">
-              <Package className="w-6 h-6 text-orange-600" />
+            <div className="bg-secondary/20 p-3 rounded-lg">
+              <Package className="w-6 h-6 text-secondary" />
             </div>
           </div>
         </div>
@@ -256,15 +269,15 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Avg Price</p>
-              <p className="text-2xl font-bold text-purple-600">
+              <p className="text-2xl font-bold text-quaternary">
                 {products.length > 0 ? 
                   `Rp ${Math.round(products.reduce((sum, p) => sum + (p.price || 0), 0) / products.length / 1000)}K` : 
                   'Rp 0'
                 }
               </p>
             </div>
-            <div className="bg-purple-100 p-3 rounded-lg">
-              <Package className="w-6 h-6 text-purple-600" />
+            <div className="bg-quaternary/20 p-3 rounded-lg">
+              <Package className="w-6 h-6 text-quaternary" />
             </div>
           </div>
         </div>
@@ -283,21 +296,15 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
                   Product
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Marketplace SKU
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Marketplace
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price
+                  Harga
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Stock
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Updated
+                  Internal Product ID
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -311,61 +318,103 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
                         <Package className="w-4 h-4 text-gray-600" />
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900">{product.product_name || 'No Name'}</div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-gray-900">
+                          {(product.product_name || 'No Name').length > 60 
+                            ? `${(product.product_name || 'No Name').substring(0, 60)}...` 
+                            : (product.product_name || 'No Name')
+                          }
+                          </span>
+                          {/* New Badge - show if created within last 24 hours */}
+                          {product.created_at && 
+                           new Date().getTime() - new Date(product.created_at).getTime() < 24 * 60 * 60 * 1000 && (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                              new
+                            </span>
+                          )}
+                        </div>
+                        {/* Marketplace SKU Information */}
+                        <div className="text-sm text-gray-500 mt-1">
+                          {product.marketplace_sku && (
+                            <div>
+                              <span className="font-medium">SKU:</span> {product.marketplace_sku}
+                              {product.marketplace_sku_variant && (
+                                <span className="ml-2">
+                                  - <span className="font-medium">Variant:</span> {product.marketplace_sku_variant}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                         {product.variant_name && (
-                          <div className="text-sm text-gray-500">{product.variant_name}</div>
+                          <div className="text-sm text-gray-500">
+                            {product.variant_name.length > 40 
+                              ? `${product.variant_name.substring(0, 40)}...` 
+                              : product.variant_name
+                            }
+                          </div>
                         )}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div>
-                      <div>{product.marketplace_sku || 'No SKU'}</div>
-                      {product.marketplace_sku_variant && (
-                        <div className="text-xs text-gray-500">{product.marketplace_sku_variant}</div>
+                      {product.specialPrice ? (
+                        <div>
+                          <div className="font-medium text-black">Rp {product.specialPrice.toLocaleString()}</div>
+                          <div className="text-xs line-through text-gray-500">Rp {(product.price || 0).toLocaleString()}</div>
+                        </div>
+                      ) : (
+                        <div className="font-medium">Rp {(product.price || 0).toLocaleString()}</div>
                       )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <StatusBadge 
-                      status={product.marketplace || 'unknown'} 
-                      variant="product" 
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div>
-                      <div className="font-medium">Rp {(product.price || 0).toLocaleString()}</div>
-                      {product.specialPrice && (
-                        <div className="text-xs text-red-600">Special: Rp {product.specialPrice.toLocaleString()}</div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      (product.stock || 0) > 20 ? 'bg-primary/20 text-primary' :
-                      (product.stock || 0) > 5 ? 'bg-secondary/20 text-secondary' :
-                      'bg-quaternary/20 text-quaternary'
-                    }`}>
+                    <span className="text-sm font-medium text-black">
                       {product.stock || 0}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {product.updated_at ? new Date(product.updated_at).toLocaleDateString('id-ID') : 'Never'}
+                    <span className="font-mono text-gray-600">
+                      {product.internal_product_id || '-'}
+                    </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-3">
-                      <button className="text-blue-600 hover:text-blue-800 transition-colors">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button className="text-green-600 hover:text-green-800 transition-colors">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteProduct(product.id)}
-                        className="text-red-600 hover:text-red-800 transition-colors"
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="relative">
+                      <button
+                        onClick={() => toggleDropdown(product.id.toString())}
+                        className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <MoreVertical className="w-4 h-4" />
                       </button>
+                      
+                      {openDropdown === product.id.toString() && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                          <div className="py-1">
+                            <button
+                              onClick={() => handleAction('view', product)}
+                              className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                              <Eye className="w-4 h-4 text-primary" />
+                              <span>View Details</span>
+                            </button>
+                            <button
+                              onClick={() => handleAction('edit', product)}
+                              className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                              <Edit className="w-4 h-4 text-secondary" />
+                              <span>Edit Product</span>
+                            </button>
+                            <button
+                              onClick={() => handleAction('delete', product)}
+                              className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span>Delete Product</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -387,6 +436,15 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
           </p>
         </div>
       )}
+
+      {/* Upload Modal */}
+      <FileUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        storeId={storeId || ''}
+        storeName={store?.name || ''}
+        marketplace={store?.platform_enum || ''}
+      />
     </div>
   );
 };
