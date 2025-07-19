@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Package, Edit, Trash2, Search, Filter, Warehouse } from 'lucide-react';
+import { Plus, Package, Warehouse } from 'lucide-react';
+import StatsCard from '../components/common/StatsCard';
+import SearchFilter from '../components/common/SearchFilter';
+import DataTable from '../components/common/DataTable';
+import StatusBadge from '../components/common/StatusBadge';
 
 interface WarehouseProduct {
   id: number;
@@ -94,11 +98,66 @@ const WarehouseProducts: React.FC = () => {
   };
 
   const getStockStatusColor = (stock: number) => {
-    if (stock > 50) return 'bg-green-100 text-green-800';
-    if (stock > 20) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-red-100 text-red-800';
+    if (stock > 50) return 'bg-primary/20 text-primary';
+    if (stock > 20) return 'bg-secondary/20 text-secondary';
+    return 'bg-quaternary/20 text-quaternary';
   };
 
+  const stats = [
+    { label: 'Total Products', value: products.length, icon: Package, color: 'bg-blue-500' },
+    { label: 'Active Products', value: products.filter(p => p.status === 'active').length, icon: Package, color: 'bg-green-500' },
+    { label: 'Low Stock', value: products.filter(p => p.stock < 20).length, icon: Package, color: 'bg-orange-500' },
+    { label: 'Warehouses', value: warehouses.length, icon: Warehouse, color: 'bg-purple-500' }
+  ];
+
+  const columns = [
+    { 
+      key: 'name', 
+      label: 'Product',
+      render: (value: string, row: WarehouseProduct) => (
+        <div className="flex items-center">
+          <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center mr-3">
+            <Package className="w-4 h-4 text-gray-600" />
+          </div>
+          <div>
+            <div className="font-medium text-gray-900">{value}</div>
+            <div className="text-sm text-gray-500">{row.category}</div>
+          </div>
+        </div>
+      )
+    },
+    { key: 'sku', label: 'SKU' },
+    { 
+      key: 'warehouseName', 
+      label: 'Warehouse',
+      render: (value: string) => (
+        <div className="flex items-center">
+          <Warehouse className="w-4 h-4 text-secondary mr-2" />
+          <span className="text-sm text-gray-900">{value}</span>
+        </div>
+      )
+    },
+    { 
+      key: 'stock', 
+      label: 'Stock',
+      render: (value: number) => (
+        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStockStatusColor(value)}`}>
+          {value}
+        </span>
+      )
+    },
+    { key: 'price', label: 'Price', render: (value: number) => `Rp ${value.toLocaleString()}` },
+    { 
+      key: 'status', 
+      label: 'Status',
+      render: (value: string, row: WarehouseProduct) => (
+        <StatusBadge 
+          status={value} 
+          onClick={() => toggleProductStatus(row.id)}
+        />
+      )
+    }
+  ];
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -117,194 +176,46 @@ const WarehouseProducts: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Products</p>
-              <p className="text-2xl font-bold text-gray-800">{products.length}</p>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <Package className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Active Products</p>
-              <p className="text-2xl font-bold text-green-600">{products.filter(p => p.status === 'active').length}</p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <Package className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Low Stock</p>
-              <p className="text-2xl font-bold text-orange-600">{products.filter(p => p.stock < 20).length}</p>
-            </div>
-            <div className="bg-orange-100 p-3 rounded-lg">
-              <Package className="w-6 h-6 text-orange-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Warehouses</p>
-              <p className="text-2xl font-bold text-purple-600">{warehouses.length}</p>
-            </div>
-            <div className="bg-purple-100 p-3 rounded-lg">
-              <Warehouse className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
+        {stats.map((stat, index) => (
+          <StatsCard key={index} {...stat} />
+        ))}
       </div>
 
       {/* Search and Filter */}
-      <div className="bg-white p-6 rounded-xl shadow-md">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Warehouse className="w-5 h-5 text-gray-400" />
-            <select
-              value={filterWarehouse}
-              onChange={(e) => setFilterWarehouse(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-            >
-              <option value="all">All Warehouses</option>
-              {warehouses.map(warehouse => (
-                <option key={warehouse.id} value={warehouse.id.toString()}>{warehouse.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Filter className="w-5 h-5 text-gray-400" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <SearchFilter
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search products..."
+        filters={[
+          {
+            icon: Warehouse,
+            value: filterWarehouse,
+            onChange: setFilterWarehouse,
+            options: [
+              { value: 'all', label: 'All Warehouses' },
+              ...warehouses.map(w => ({ value: w.id.toString(), label: w.name }))
+            ]
+          },
+          {
+            value: filterStatus,
+            onChange: setFilterStatus,
+            options: [
+              { value: 'all', label: 'All Status' },
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' }
+            ]
+          }
+        ]}
+      />
 
       {/* Products Table */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">Products by Warehouse</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Product
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  SKU
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Warehouse
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Stock
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredProducts.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center mr-3">
-                        <Package className="w-4 h-4 text-gray-600" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">{product.name}</div>
-                        <div className="text-sm text-gray-500">{product.category}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {product.sku}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Warehouse className="w-4 h-4 text-secondary mr-2" />
-                      <span className="text-sm text-gray-900">{product.warehouseName}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStockStatusColor(product.stock)}`}>
-                      {product.stock}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    Rp {product.price.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => toggleProductStatus(product.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                        product.status === 'active' 
-                          ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                          : 'bg-red-100 text-red-800 hover:bg-red-200'
-                      }`}
-                    >
-                      {product.status}
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-3">
-                      <button className="text-secondary hover:text-secondary/80 transition-colors">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteProduct(product.id)}
-                        className="text-quaternary hover:text-quaternary/80 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {filteredProducts.length === 0 && (
-        <div className="text-center py-12">
-          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg">No products found</p>
-        </div>
-      )}
+      <DataTable
+        title="Products by Warehouse"
+        columns={columns}
+        data={filteredProducts}
+        emptyMessage="No products found"
+        emptyIcon={Package}
+      />
     </div>
   );
 };

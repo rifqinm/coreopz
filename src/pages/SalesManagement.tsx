@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { TrendingUp, DollarSign, ShoppingCart, Users, Calendar, Filter, Download } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingCart, Users, Download } from 'lucide-react';
+import StatsCard from '../components/common/StatsCard';
+import SearchFilter from '../components/common/SearchFilter';
+import DataTable from '../components/common/DataTable';
+import StatusBadge from '../components/common/StatusBadge';
 
 interface Sale {
   id: number;
@@ -11,7 +15,11 @@ interface Sale {
   status: 'completed' | 'pending' | 'cancelled';
 }
 
-const SalesManagement: React.FC = () => {
+interface SalesManagementProps {
+  storeId?: string | null;
+}
+
+const SalesManagement: React.FC<SalesManagementProps> = ({ storeId }) => {
   const [sales, setSales] = useState<Sale[]>([
     {
       id: 1,
@@ -93,20 +101,17 @@ const SalesManagement: React.FC = () => {
       color: 'bg-orange-500',
       change: '-2.1%'
     }
-  ];
+  ] as const;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const columns = [
+    { key: 'id', label: 'Order ID', render: (value: number) => `#${value.toString().padStart(4, '0')}` },
+    { key: 'productName', label: 'Product' },
+    { key: 'customerName', label: 'Customer' },
+    { key: 'quantity', label: 'Quantity' },
+    { key: 'totalAmount', label: 'Total Amount', render: (value: number) => `Rp ${value.toLocaleString()}` },
+    { key: 'date', label: 'Date', render: (value: string) => new Date(value).toLocaleDateString('id-ID') },
+    { key: 'status', label: 'Status', render: (value: string) => <StatusBadge status={value} variant="order" /> }
+  ];
 
   return (
     <div className="space-y-6">
@@ -121,22 +126,7 @@ const SalesManagement: React.FC = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
-          <div key={index} className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
-                <p className={`text-sm font-medium ${
-                  stat.change?.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {stat.change}
-                </p>
-              </div>
-              <div className={`${stat.color} p-3 rounded-lg`}>
-                <stat.icon className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </div>
+          <StatsCard key={index} {...stat} />
         ))}
       </div>
 
@@ -152,113 +142,32 @@ const SalesManagement: React.FC = () => {
       </div>
 
       {/* Filter Controls */}
-      <div className="bg-white p-4 rounded-xl shadow-md">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <Filter className="w-5 h-5 text-gray-400" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="pending">Pending</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Calendar className="w-5 h-5 text-gray-400" />
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <SearchFilter
+        searchTerm=""
+        onSearchChange={() => {}}
+        searchPlaceholder="Search sales..."
+        filters={[
+          {
+            value: filterStatus,
+            onChange: setFilterStatus,
+            options: [
+              { value: 'all', label: 'All Status' },
+              { value: 'completed', label: 'Completed' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'cancelled', label: 'Cancelled' }
+            ]
+          }
+        ]}
+      />
 
       {/* Sales Table */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">Recent Sales</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Order ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Product
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Quantity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredSales.map((sale) => (
-                <tr key={sale.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-gray-900">#{sale.id.toString().padStart(4, '0')}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center mr-3">
-                        <ShoppingCart className="w-4 h-4 text-gray-600" />
-                      </div>
-                      <span className="text-sm font-medium text-gray-900">{sale.productName}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {sale.customerName}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {sale.quantity}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    Rp {sale.totalAmount.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(sale.date).toLocaleDateString('id-ID')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(sale.status)}`}>
-                      {sale.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {filteredSales.length === 0 && (
-        <div className="text-center py-12">
-          <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg">No sales found</p>
-        </div>
-      )}
+      <DataTable
+        title="Recent Sales"
+        columns={columns}
+        data={filteredSales}
+        emptyMessage="No sales found"
+        emptyIcon={ShoppingCart}
+      />
     </div>
   );
 };

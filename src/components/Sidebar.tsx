@@ -269,34 +269,77 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
                       {expandedStores.includes(store.id) && (
                         <div className="ml-4 space-y-1">
                           <button
-                            onClick={() => setCurrentPage('product')}
-                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
-                              currentPage === 'product'
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-gray-600 hover:bg-gray-50'
+                            onClick={() => {
+                              setCurrentPage(`product/${store.id}`);
+                              // Update URL to reflect the current store
+                              const url = new URL(window.location.href);
+                              url.searchParams.set('page', `product/${store.id}`);
+                              window.history.pushState({}, '', url.toString());
+                            }}
+                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs font-medium ${
+                              (currentPage === 'product' && window.location.search.includes(`product/${store.id}`)) ||
+                              window.location.search === `?page=product/${store.id}`
+                                ? 'bg-primary text-white shadow-sm'
+                                : 'text-gray-600 hover:bg-primary/10 hover:text-primary'
                             }`}
                           >
-                            <span>Product</span>
+                            <div className="flex items-center space-x-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${
+                                (currentPage === 'product' && window.location.search.includes(`product/${store.id}`)) ||
+                                window.location.search === `?page=product/${store.id}`
+                                  ? 'bg-white'
+                                  : 'bg-primary'
+                              }`}></div>
+                              <span>Product</span>
+                            </div>
                           </button>
                           <button
-                            onClick={() => setCurrentPage('sales')}
-                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
-                              currentPage === 'sales'
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-gray-600 hover:bg-gray-50'
+                            onClick={() => {
+                              setCurrentPage(`sales/${store.id}`);
+                              const url = new URL(window.location.href);
+                              url.searchParams.set('page', `sales/${store.id}`);
+                              window.history.pushState({}, '', url.toString());
+                            }}
+                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs font-medium ${
+                              (currentPage === 'sales' && window.location.search.includes(`sales/${store.id}`)) ||
+                              window.location.search === `?page=sales/${store.id}`
+                                ? 'bg-primary text-white shadow-sm'
+                                : 'text-gray-600 hover:bg-primary/10 hover:text-primary'
                             }`}
                           >
-                            <span>Sales</span>
+                            <div className="flex items-center space-x-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${
+                                (currentPage === 'sales' && window.location.search.includes(`sales/${store.id}`)) ||
+                                window.location.search === `?page=sales/${store.id}`
+                                  ? 'bg-white'
+                                  : 'bg-primary'
+                              }`}></div>
+                              <span>Sales</span>
+                            </div>
                           </button>
                           <button
-                            onClick={() => setCurrentPage('withdrawal')}
-                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
-                              currentPage === 'withdrawal'
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-gray-600 hover:bg-gray-50'
+                            onClick={() => {
+                              setCurrentPage(`withdrawal/${store.id}`);
+                              const url = new URL(window.location.href);
+                              url.searchParams.set('page', `withdrawal/${store.id}`);
+                              window.history.pushState({}, '', url.toString());
+                            }}
+                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs font-medium ${
+                              (currentPage === 'withdrawal' && window.location.search.includes(`withdrawal/${store.id}`)) ||
+                              window.location.search === `?page=withdrawal/${store.id}`
+                                ? 'bg-primary text-white shadow-sm'
+                                : 'text-gray-600 hover:bg-primary/10 hover:text-primary'
                             }`}
                           >
-                            <span>Withdrawal</span>
+                            <div className="flex items-center space-x-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${
+                                (currentPage === 'withdrawal' && window.location.search.includes(`withdrawal/${store.id}`)) ||
+                                window.location.search === `?page=withdrawal/${store.id}`
+                                  ? 'bg-white'
+                                  : 'bg-primary'
+                              }`}></div>
+                              <span>Withdrawal</span>
+                            </div>
                           </button>
                         </div>
                       )}
@@ -352,13 +395,20 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
                         <div className="ml-4 space-y-1">
                           <button
                             onClick={() => setCurrentPage('warehouse-products')}
-                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
+                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs font-medium ${
                               currentPage === 'warehouse-products'
-                                ? 'bg-secondary/10 text-secondary'
-                                : 'text-gray-600 hover:bg-gray-50'
+                                ? 'bg-secondary text-white shadow-sm'
+                                : 'text-gray-600 hover:bg-secondary/10 hover:text-secondary'
                             }`}
                           >
-                            <span>Manage Product</span>
+                            <div className="flex items-center space-x-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${
+                                currentPage === 'warehouse-products'
+                                  ? 'bg-white'
+                                  : 'bg-secondary'
+                              }`}></div>
+                              <span>Manage Product</span>
+                            </div>
                           </button>
                         </div>
                       )}

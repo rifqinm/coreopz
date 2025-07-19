@@ -16,8 +16,6 @@ import AccountingOverview from './pages/AccountingOverview';
 import AccountingGeneralJournal from './pages/AccountingGeneralJournal';
 import Profile from './pages/Profile';
 import ResetPassword from './pages/ResetPassword';
-import NewPassword from './pages/NewPassword';
-import ResetPasswordStandalone from './pages/ResetPasswordStandalone';
 
 function App() {
   // Check if we're on a standalone page that doesn't require auth
@@ -52,6 +50,15 @@ function App() {
     return urlParams.get('page') || 'dashboard';
   });
   
+  const [currentStoreId, setCurrentStoreId] = useState<string | null>(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const page = urlParams.get('page');
+    if (page?.startsWith('product/') || page?.startsWith('sales/') || page?.startsWith('withdrawal/')) {
+      return page.split('/')[1];
+    }
+    return null;
+  });
+  
   const [stores, setStores] = useState([
     { id: 1, name: 'Toko Elektronik', status: 'active', type: 'online' },
     { id: 2, name: 'Toko Fashion', status: 'active', type: 'offline' },
@@ -81,11 +88,25 @@ function App() {
       'new-password': 'Set New Password - Coreopz Management'
     };
     
+    // Handle product pages with store ID
+    if (page.startsWith('product/')) {
+      return 'Store Products - Coreopz Management';
+    }
+    
     return titleMap[page] || 'Coreopz Management';
   };
 
   const handlePageChange = (page: string) => {
-    setCurrentPage(page);
+    // Parse page and store ID if it's a product page
+    if (page.startsWith('product/') || page.startsWith('sales/') || page.startsWith('withdrawal/')) {
+      const storeId = page.split('/')[1];
+      setCurrentStoreId(storeId);
+      setCurrentPage(page.split('/')[0]);
+    } else {
+      setCurrentStoreId(null);
+      setCurrentPage(page);
+    }
+    
     const url = new URL(window.location.href);
     url.searchParams.set('page', page);
     window.history.pushState({}, '', url.toString());
@@ -94,7 +115,16 @@ function App() {
   useEffect(() => {
     const handlePopState = () => {
       const urlParams = new URLSearchParams(window.location.search);
-      setCurrentPage(urlParams.get('page') || 'dashboard');
+      const page = urlParams.get('page') || 'dashboard';
+      
+      if (page.startsWith('product/') || page.startsWith('sales/') || page.startsWith('withdrawal/')) {
+        const storeId = page.split('/')[1];
+        setCurrentStoreId(storeId);
+        setCurrentPage(page.split('/')[0]);
+      } else {
+        setCurrentStoreId(null);
+        setCurrentPage(page);
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -103,19 +133,20 @@ function App() {
 
   // Update document title when page changes
   useEffect(() => {
-    document.title = getPageTitle(currentPage);
-  }, [currentPage]);
+    const pageForTitle = currentStoreId ? `${currentPage}/${currentStoreId}` : currentPage;
+    document.title = getPageTitle(pageForTitle);
+  }, [currentPage, currentStoreId]);
 
   const renderContent = () => {
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard stores={stores} setStores={setStores} />;
       case 'product':
-        return <ProductManagement />;
+        return <ProductManagement storeId={currentStoreId} />;
       case 'sales':
-        return <SalesManagement />;
+        return <SalesManagement storeId={currentStoreId} />;
       case 'withdrawal':
-        return <WithdrawalManagement />;
+        return <WithdrawalManagement storeId={currentStoreId} />;
       case 'warehouse-products':
         return <WarehouseProducts />;
       case 'integration-store':

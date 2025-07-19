@@ -12,7 +12,11 @@ interface Withdrawal {
   processedDate?: string;
 }
 
-const WithdrawalManagement: React.FC = () => {
+interface WithdrawalManagementProps {
+  storeId?: string | null;
+}
+
+const WithdrawalManagement: React.FC<WithdrawalManagementProps> = ({ storeId }) => {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([
     {
       id: 1,

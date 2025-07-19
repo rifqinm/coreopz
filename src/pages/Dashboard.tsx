@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Plus, Store, TrendingUp, Package, Users, Eye, Edit, Trash2, DollarSign, CreditCard, BarChart3, PieChart, ArrowUp, ArrowDown } from 'lucide-react';
+import { Store, TrendingUp, DollarSign, BarChart3, ArrowUp, ArrowDown, CreditCard, Package, Eye, Edit, Trash2 } from 'lucide-react';
+import StatsCard from '../components/common/StatsCard';
+import StatusBadge from '../components/common/StatusBadge';
 
 interface Store {
   id: number;
@@ -104,7 +106,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stores, setStores }) => {
       change: '+15.2%',
       changeType: 'positive'
     }
-  ];
+  ] as const;
 
   const financialStats = [
     { 
@@ -149,29 +151,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stores, setStores }) => {
       {/* Main Financial Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {mainStats.map((stat, index) => (
-          <div key={index} className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
-                <div className="flex items-center mt-1">
-                  {stat.changeType === 'positive' ? (
-                    <ArrowUp className="w-4 h-4 text-green-500 mr-1" />
-                  ) : (
-                    <ArrowDown className="w-4 h-4 text-red-500 mr-1" />
-                  )}
-                  <span className={`text-sm font-medium ${
-                    stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {stat.change}
-                  </span>
-                </div>
-              </div>
-              <div className={`${stat.color} p-3 rounded-lg`}>
-                <stat.icon className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </div>
+          <StatsCard key={index} {...stat} />
         ))}
       </div>
 
@@ -244,18 +224,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stores, setStores }) => {
       {/* Financial Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {financialStats.map((stat, index) => (
-          <div key={index} className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
-                <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
-              </div>
-              <div className={`${stat.color} p-3 rounded-lg`}>
-                <stat.icon className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </div>
+          <StatsCard key={index} {...stat} />
         ))}
       </div>
 
@@ -366,56 +335,6 @@ const Dashboard: React.FC<DashboardProps> = ({ stores, setStores }) => {
           </div>
         </div>
       </div>
-
-      {/* Create Store Modal */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Create New Toko</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Toko
-                </label>
-                <input
-                  type="text"
-                  value={newStore.name}
-                  onChange={(e) => setNewStore({...newStore, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Masukkan nama toko"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipe Toko
-                </label>
-                <select
-                  value={newStore.type}
-                  onChange={(e) => setNewStore({...newStore, type: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="online">Online</option>
-                  <option value="offline">Offline</option>
-                </select>
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateStore}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all"
-                >
-                  Create
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

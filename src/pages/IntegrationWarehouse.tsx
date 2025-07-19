@@ -245,8 +245,8 @@ const IntegrationWarehouse: React.FC = () => {
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className={`h-2 rounded-full ${
-                      integration.capacity >= 80 ? 'bg-red-500' :
-                      integration.capacity >= 60 ? 'bg-yellow-500' : 'bg-green-500'
+                      integration.capacity >= 80 ? 'bg-quaternary' :
+                      integration.capacity >= 60 ? 'bg-secondary' : 'bg-primary'
                     }`}
                     style={{ width: `${integration.capacity}%` }}
                   ></div>

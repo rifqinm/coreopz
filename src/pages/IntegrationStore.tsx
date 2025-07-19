@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Store, Plus, Settings, Link, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Store, CheckCircle, RefreshCw, Package } from 'lucide-react';
 import { supabaseAdmin } from '../config/supabaseAdmin';
 import { useAuth } from '../contexts/AuthContext';
-import TestStoreCreation from '../components/TestStoreCreation';
+import StatsCard from '../components/common/StatsCard';
+import StatusBadge from '../components/common/StatusBadge';
 
 interface StoreData {
   id: number;
@@ -29,7 +30,6 @@ const IntegrationStore: React.FC = () => {
   const [integrations, setIntegrations] = useState<StoreIntegration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   useEffect(() => {
     if (supabaseUser?.id) {
@@ -70,6 +70,13 @@ const IntegrationStore: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewProducts = (storeId: number) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', `product/${storeId}`);
+    window.history.pushState({}, '', url.toString());
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   const getStatusColor = (status: string) => {
@@ -142,62 +149,34 @@ const IntegrationStore: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-800">Store Integration</h1>
           <p className="text-gray-600 mt-1">Manage your store connections and synchronization</p>
         </div>
-        <button 
-          onClick={() => window.location.href = '/?page=dashboard'}
-          className="flex items-center space-x-2 bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-all shadow-lg"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add Store</span>
-        </button>
       </div>
 
-      {/* Debug Info */}
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Stores</p>
-              <p className="text-2xl font-bold text-gray-800">{integrations.length}</p>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <Store className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Connected</p>
-              <p className="text-2xl font-bold text-green-600">{integrations.filter(i => i.connectionStatus === 'connected').length}</p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Products</p>
-              <p className="text-2xl font-bold text-purple-600">{integrations.reduce((sum, i) => sum + i.products, 0)}</p>
-            </div>
-            <div className="bg-purple-100 p-3 rounded-lg">
-              <Store className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold text-orange-600">{integrations.reduce((sum, i) => sum + i.orders, 0)}</p>
-            </div>
-            <div className="bg-orange-100 p-3 rounded-lg">
-              <Store className="w-6 h-6 text-orange-600" />
-            </div>
-          </div>
-        </div>
+        <StatsCard
+          label="Total Stores"
+          value={integrations.length}
+          icon={Store}
+          color="bg-blue-500"
+        />
+        <StatsCard
+          label="Connected"
+          value={integrations.filter(i => i.connectionStatus === 'connected').length}
+          icon={CheckCircle}
+          color="bg-green-500"
+        />
+        <StatsCard
+          label="Total Products"
+          value={integrations.reduce((sum, i) => sum + i.products, 0)}
+          icon={Package}
+          color="bg-purple-500"
+        />
+        <StatsCard
+          label="Total Orders"
+          value={integrations.reduce((sum, i) => sum + i.orders, 0)}
+          icon={Store}
+          color="bg-orange-500"
+        />
       </div>
 
       {/* Integration Cards */}
@@ -220,10 +199,7 @@ const IntegrationStore: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {getStatusIcon(integration.connectionStatus)}
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(integration.connectionStatus)}`}>
-                    {integration.connectionStatus}
-                  </span>
+                  <StatusBadge status={integration.connectionStatus} />
                 </div>
               </div>
               
@@ -249,15 +225,18 @@ const IntegrationStore: React.FC = () => {
               
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
                 <button 
+                  onClick={() => handleViewProducts(integration.id)}
+                  className="flex items-center space-x-1 text-purple-600 hover:text-purple-800 transition-colors"
+                >
+                  <Package className="w-4 h-4" />
+                  <span className="text-sm">View Products</span>
+                </button>
+                <button 
                   onClick={() => handleSync(integration.id)}
                   className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 transition-colors"
                 >
                   <RefreshCw className="w-4 h-4" />
                   <span className="text-sm">Sync Now</span>
-                </button>
-                <button className="flex items-center space-x-1 text-gray-600 hover:text-gray-800 transition-colors">
-                  <Settings className="w-4 h-4" />
-                  <span className="text-sm">Settings</span>
                 </button>
               </div>
             </div>
@@ -268,12 +247,6 @@ const IntegrationStore: React.FC = () => {
           <Store className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-500 text-lg">No stores found</p>
           <p className="text-gray-400 text-sm mt-2">Create your first store to get started</p>
-          <button 
-            onClick={() => window.location.href = '/?page=dashboard'}
-            className="mt-4 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-all"
-          >
-            Create Store
-          </button>
         </div>
       )}
     </div>
