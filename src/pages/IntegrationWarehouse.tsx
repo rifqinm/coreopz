@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Warehouse, Plus, Settings, Link, CheckCircle, XCircle, RefreshCw, MapPin } from 'lucide-react';
-import { supabase } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabaseAdmin';
 
 interface WarehouseData {
   id: string;
@@ -32,7 +32,7 @@ const IntegrationWarehouse: React.FC = () => {
   const fetchWarehouses = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('warehouses')
         .select('*')
         .order('created_at', { ascending: false });
@@ -52,7 +52,6 @@ const IntegrationWarehouse: React.FC = () => {
       setIntegrations(transformedData);
     } catch (err: any) {
       setError(err.message);
-      console.error('Error fetching warehouses:', err);
     } finally {
       setLoading(false);
     }

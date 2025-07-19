@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Store, Plus, Settings, Link, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
-import { supabase } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabaseAdmin';
 import { useAuth } from '../contexts/AuthContext';
+import TestStoreCreation from '../components/TestStoreCreation';
 
 interface StoreData {
   id: number;
@@ -28,15 +29,12 @@ const IntegrationStore: React.FC = () => {
   const [integrations, setIntegrations] = useState<StoreIntegration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   useEffect(() => {
-    console.log('Current User:', currentUser);
-    console.log('Supabase User:', supabaseUser);
-    
     if (supabaseUser?.id) {
       fetchStores();
     } else {
-      console.log('No supabase user ID found');
       setLoading(false);
     }
   }, [supabaseUser]);
@@ -46,18 +44,14 @@ const IntegrationStore: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching stores for user_id:', supabaseUser?.id);
-      
-      const { data, error, count } = await supabase
+      // Get stores for this specific user using service role
+      const { data, error } = await supabaseAdmin
         .from('stores')
-        .select('*', { count: 'exact' })
+        .select('*')
         .eq('user_id', supabaseUser?.id)
         .order('created_at', { ascending: false });
 
-      console.log('Supabase query result:', { data, error, count });
-
       if (error) {
-        console.error('Supabase error:', error);
         throw error;
       }
 
@@ -70,10 +64,8 @@ const IntegrationStore: React.FC = () => {
         connectionStatus: store.status ? 'connected' : 'disconnected' as 'connected' | 'disconnected' | 'error'
       }));
 
-      console.log('Transformed data:', transformedData);
       setIntegrations(transformedData);
     } catch (err: any) {
-      console.error('Error fetching stores:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -160,15 +152,6 @@ const IntegrationStore: React.FC = () => {
       </div>
 
       {/* Debug Info */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h3 className="font-semibold text-yellow-800">Debug Info:</h3>
-          <p className="text-sm text-yellow-700">User ID: {supabaseUser?.id || 'Not found'}</p>
-          <p className="text-sm text-yellow-700">User Email: {supabaseUser?.email || 'Not found'}</p>
-          <p className="text-sm text-yellow-700">Stores Count: {integrations.length}</p>
-        </div>
-      )}
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-md">

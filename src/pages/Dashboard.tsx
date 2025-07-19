@@ -144,13 +144,6 @@ const Dashboard: React.FC<DashboardProps> = ({ stores, setStores }) => {
           <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
           <p className="text-gray-600 mt-1">Overview of your business performance</p>
         </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center space-x-2 bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Create Toko</span>
-        </button>
       </div>
 
       {/* Main Financial Stats */}

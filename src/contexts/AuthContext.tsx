@@ -12,7 +12,6 @@ import {
   confirmPasswordReset
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
-import { supabase } from '../config/supabase';
 import { supabaseAdmin } from '../config/supabaseAdmin';
 
 interface SupabaseUser {
@@ -63,8 +62,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAndCreateUser = async (user: User) => {
     try {
-      console.log('Checking user:', user.email);
-      
       // Check if user exists in users table
       const { data: existingUser, error: checkError } = await supabaseAdmin
         .from('users')
@@ -74,14 +71,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (checkError && checkError.code !== 'PGRST116') {
         // PGRST116 is "not found" error, which is expected for new users
-        console.error('Error checking user:', checkError);
         throw checkError;
       }
 
       if (existingUser && !checkError) {
         // User exists, update supabaseUser state
         setSupabaseUser(existingUser);
-        console.log('User found in database:', existingUser);
         
         // Check if we need to update any missing data from Firebase
         const needsUpdate = 
@@ -90,7 +85,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           (existingUser.provider !== (user.providerData[0]?.providerId || 'password'));
         
         if (needsUpdate) {
-          console.log('Updating existing user with new Firebase data');
           const updateData = {
             ...(user.displayName && !existingUser.full_name && { full_name: user.displayName }),
             ...(user.photoURL && !existingUser.avatar_url && { avatar_url: user.photoURL }),
@@ -106,15 +100,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             .single();
           
           if (updateError) {
-            console.error('Error updating existing user:', updateError);
           } else {
             setSupabaseUser(updatedUser);
-            console.log('User updated successfully:', updatedUser);
           }
         }
       } else {
         // User doesn't exist, create new user  
-        console.log('Creating new user for:', user.email);
         const newUserData = {
           email: user.email || '',
           full_name: user.displayName || user.email?.split('@')[0] || '',
@@ -126,8 +117,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           updated_at: new Date().toISOString()
         };
 
-        console.log('New user data to insert:', newUserData);
-        
         const { data: createdUser, error: createError } = await supabaseAdmin
           .from('users')
           .insert(newUserData)
@@ -135,15 +124,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           .single();
 
         if (createError) {
-          console.error('Error creating user:', createError);
           throw createError;
         } else {
           setSupabaseUser(createdUser);
-          console.log('New user created:', createdUser);
         }
       }
     } catch (error) {
-      console.error('Error in checkAndCreateUser:', error);
       throw error;
     }
   };
@@ -154,8 +140,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     try {
-      console.log('Updating user profile:', data);
-      
       const updateData = {
         ...data,
         updated_at: new Date().toISOString()
@@ -169,15 +153,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .single();
 
       if (error) {
-        console.error('Error updating user profile:', error);
         throw error;
       }
 
       setSupabaseUser(updatedUser);
-      console.log('User profile updated successfully:', updatedUser);
       return updatedUser;
     } catch (error) {
-      console.error('Error updating user profile:', error);
       throw error;
     }
   };
@@ -188,7 +169,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await updateProfile(userCredential.user, { displayName });
       await checkAndCreateUser(userCredential.user);
     } catch (error) {
-      console.error('Signup error:', error);
       throw error;
     }
   };
@@ -198,7 +178,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       await checkAndCreateUser(userCredential.user);
     } catch (error) {
-      console.error('Login error:', error);
       throw error;
     }
   };
@@ -208,7 +187,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userCredential = await signInWithPopup(auth, googleProvider);
       await checkAndCreateUser(userCredential.user);
     } catch (error) {
-      console.error('Google login error:', error);
       throw error;
     }
   };
@@ -218,7 +196,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await signOut(auth);
       setSupabaseUser(null);
     } catch (error) {
-      console.error('Logout error:', error);
       throw error;
     }
   };
@@ -227,7 +204,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
-      console.error('Reset password error:', error);
       throw error;
     }
   };
@@ -236,7 +212,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await confirmPasswordReset(auth, code, newPassword);
     } catch (error) {
-      console.error('Confirm password reset error:', error);
       throw error;
     }
   };
@@ -251,7 +226,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setSupabaseUser(null);
         }
       } catch (error) {
-        console.error('Auth state change error:', error);
         // Don't throw here to prevent infinite loops
       } finally {
         setLoading(false);

@@ -20,7 +20,7 @@ import {
   BarChart3,
   Layers
 } from 'lucide-react';
-import { supabase } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabaseAdmin';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Store {
@@ -55,9 +55,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
   const [expandedWarehouses, setExpandedWarehouses] = useState<string[]>([]);
 
   useEffect(() => {
-    console.log('Sidebar - Current User:', currentUser);
-    console.log('Sidebar - Supabase User:', supabaseUser);
-    
     if (supabaseUser?.id) {
       fetchStores();
     }
@@ -66,44 +63,37 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
 
   const fetchStores = async () => {
     try {
-      console.log('Sidebar - Fetching stores for user_id:', supabaseUser?.id);
-      
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('stores')
         .select('id, name, status, store_type, user_id')
         .eq('user_id', supabaseUser?.id)
         .eq('status', true)
         .order('created_at', { ascending: false });
 
-      console.log('Sidebar - Stores query result:', { data, error });
 
       if (error) {
-        console.error('Sidebar - Error fetching stores:', error);
         return;
       }
       
       setStores(data || []);
     } catch (err) {
-      console.error('Sidebar - Error fetching stores:', err);
     }
   };
 
   const fetchWarehouses = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('warehouses')
         .select('id, name, location, is_active')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Sidebar - Error fetching warehouses:', error);
         return;
       }
       
       setWarehouses(data || []);
     } catch (err) {
-      console.error('Sidebar - Error fetching warehouses:', err);
     }
   };
 
