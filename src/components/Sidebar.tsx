@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Home, 
   Package, 
@@ -18,37 +18,94 @@ import {
   Receipt,
   BookOpen,
   BarChart3,
-  Layers,
-  Database
+  Layers
 } from 'lucide-react';
+import { supabase } from '../config/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Store {
   id: number;
   name: string;
-  status: string;
-  type: string;
+  status: boolean;
+  store_type: string;
+  user_id: string;
+}
+
+interface Warehouse {
+  id: string;
+  name: string;
+  location: string | null;
+  is_active: boolean;
 }
 
 interface SidebarProps {
   currentPage: string;
   setCurrentPage: (page: string) => void;
-  stores: Store[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, stores }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
+  const { currentUser, supabaseUser } = useAuth();
+  const [stores, setStores] = useState<Store[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [expandedStores, setExpandedStores] = useState<number[]>([]);
   const [isStoresCollapsed, setIsStoresCollapsed] = useState(false);
   const [isWarehousesCollapsed, setIsWarehousesCollapsed] = useState(false);
   const [isIntegrationCollapsed, setIsIntegrationCollapsed] = useState(false);
   const [isAccountingCollapsed, setIsAccountingCollapsed] = useState(false);
-  const [expandedWarehouses, setExpandedWarehouses] = useState<number[]>([]);
+  const [expandedWarehouses, setExpandedWarehouses] = useState<string[]>([]);
 
-  // Mock warehouse data
-  const warehouses = [
-    { id: 1, name: 'Gudang Jakarta', status: 'active', location: 'Jakarta' },
-    { id: 2, name: 'Gudang Surabaya', status: 'active', location: 'Surabaya' },
-    { id: 3, name: 'Gudang Bandung', status: 'active', location: 'Bandung' }
-  ];
+  useEffect(() => {
+    console.log('Sidebar - Current User:', currentUser);
+    console.log('Sidebar - Supabase User:', supabaseUser);
+    
+    if (supabaseUser?.id) {
+      fetchStores();
+    }
+    fetchWarehouses();
+  }, [supabaseUser]);
+
+  const fetchStores = async () => {
+    try {
+      console.log('Sidebar - Fetching stores for user_id:', supabaseUser?.id);
+      
+      const { data, error } = await supabase
+        .from('stores')
+        .select('id, name, status, store_type, user_id')
+        .eq('user_id', supabaseUser?.id)
+        .eq('status', true)
+        .order('created_at', { ascending: false });
+
+      console.log('Sidebar - Stores query result:', { data, error });
+
+      if (error) {
+        console.error('Sidebar - Error fetching stores:', error);
+        return;
+      }
+      
+      setStores(data || []);
+    } catch (err) {
+      console.error('Sidebar - Error fetching stores:', err);
+    }
+  };
+
+  const fetchWarehouses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('warehouses')
+        .select('id, name, location, is_active')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Sidebar - Error fetching warehouses:', error);
+        return;
+      }
+      
+      setWarehouses(data || []);
+    } catch (err) {
+      console.error('Sidebar - Error fetching warehouses:', err);
+    }
+  };
 
   const toggleStore = (storeId: number) => {
     setExpandedStores(prev => 
@@ -58,7 +115,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, stores }
     );
   };
 
-  const toggleWarehouse = (warehouseId: number) => {
+  const toggleWarehouse = (warehouseId: string) => {
     setExpandedWarehouses(prev => 
       prev.includes(warehouseId) 
         ? prev.filter(id => id !== warehouseId)
@@ -66,12 +123,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, stores }
     );
   };
 
-  const activeStores = stores.filter(store => store.status === 'active');
-  const activeWarehouses = warehouses.filter(warehouse => warehouse.status === 'active');
-
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'stock', label: 'Stock Management', icon: Warehouse },
+    { id: 'dashboard', label: 'Dashboard', icon: Home }
   ];
 
   // Integration menu items
@@ -91,31 +144,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, stores }
     { id: 'accounting-payables', label: 'Hutang', icon: CreditCard },
     { id: 'accounting-cash', label: 'Cash Management', icon: Banknote }
   ];
-
-  // Get current path for breadcrumb
-  const getCurrentPath = () => {
-    const pathMap: { [key: string]: string } = {
-      'dashboard': 'Dashboard',
-      'stock': 'Stock Management',
-      'product': 'Product Management',
-      'sales': 'Sales Management',
-      'withdrawal': 'Withdrawal Management',
-      // Integration paths
-      'integration-store': 'Integration / Store',
-      'integration-warehouse': 'Integration / Warehouse',
-      'integration-sheets': 'Integration / Sheets',
-      // Accounting paths
-      'accounting-overview': 'Dashboard',
-      'accounting-general-journal': 'Accounting / Jurnal Umum',
-      'accounting-special-journal': 'Accounting / Jurnal Khusus',
-      'accounting-cashflow': 'Accounting / Cashflow',
-      'accounting-receivables': 'Accounting / Piutang',
-      'accounting-payables': 'Accounting / Hutang',
-      'accounting-cash': 'Accounting / Cash Management'
-    };
-    
-    return pathMap[currentPage] || 'Dashboard';
-  };
 
   return (
     <aside className="w-64 bg-white shadow-lg border-r border-gray-200 min-h-screen">
@@ -218,7 +246,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, stores }
               <div className="flex items-center space-x-2">
                 <Store className="w-4 h-4 text-primary" />
                 <span className="text-xs font-semibold uppercase tracking-wider">
-                  Toko Aktif ({activeStores.length})
+                  Toko Aktif ({stores.length})
                 </span>
               </div>
               {isStoresCollapsed ? (
@@ -230,56 +258,65 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, stores }
             
             {!isStoresCollapsed && (
               <div className="ml-2 mt-1 space-y-1">
-                {activeStores.map((store) => (
-                  <div key={store.id} className="space-y-1">
-                    <button
-                      onClick={() => toggleStore(store.id)}
-                      className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
-                    >
-                      <span className="text-sm font-medium truncate">{store.name}</span>
-                      {expandedStores.includes(store.id) ? (
-                        <ChevronDown className="w-3 h-3 flex-shrink-0" />
-                      ) : (
-                        <ChevronRight className="w-3 h-3 flex-shrink-0" />
+                {stores.length > 0 ? (
+                  stores.map((store) => (
+                    <div key={store.id} className="space-y-1">
+                      <button
+                        onClick={() => toggleStore(store.id)}
+                        className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-2 h-2 rounded-full ${store.store_type === 'online' ? 'bg-primary' : 'bg-secondary'}`}></div>
+                          <span className="text-sm font-medium truncate">{store.name}</span>
+                        </div>
+                        {expandedStores.includes(store.id) ? (
+                          <ChevronDown className="w-3 h-3 flex-shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-3 h-3 flex-shrink-0" />
+                        )}
+                      </button>
+                      
+                      {expandedStores.includes(store.id) && (
+                        <div className="ml-4 space-y-1">
+                          <button
+                            onClick={() => setCurrentPage('product')}
+                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
+                              currentPage === 'product'
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span>Product</span>
+                          </button>
+                          <button
+                            onClick={() => setCurrentPage('sales')}
+                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
+                              currentPage === 'sales'
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span>Sales</span>
+                          </button>
+                          <button
+                            onClick={() => setCurrentPage('withdrawal')}
+                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
+                              currentPage === 'withdrawal'
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span>Withdrawal</span>
+                          </button>
+                        </div>
                       )}
-                    </button>
-                    
-                    {expandedStores.includes(store.id) && (
-                      <div className="ml-4 space-y-1">
-                        <button
-                          onClick={() => setCurrentPage('product')}
-                          className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
-                            currentPage === 'product'
-                              ? 'bg-primary/10 text-primary'
-                              : 'text-gray-600 hover:bg-gray-50'
-                          }`}
-                        >
-                          <span>Product</span>
-                        </button>
-                        <button
-                          onClick={() => setCurrentPage('sales')}
-                          className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
-                            currentPage === 'sales'
-                              ? 'bg-primary/10 text-primary'
-                              : 'text-gray-600 hover:bg-gray-50'
-                          }`}
-                        >
-                          <span>Sales</span>
-                        </button>
-                        <button
-                          onClick={() => setCurrentPage('withdrawal')}
-                          className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
-                            currentPage === 'withdrawal'
-                              ? 'bg-primary/10 text-primary'
-                              : 'text-gray-600 hover:bg-gray-50'
-                          }`}
-                        >
-                          <span>Withdrawal</span>
-                        </button>
-                      </div>
-                    )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-xs text-gray-500">
+                    {supabaseUser?.id ? 'No active stores' : 'Loading...'}
                   </div>
-                ))}
+                )}
               </div>
             )}
 
@@ -291,7 +328,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, stores }
               <div className="flex items-center space-x-2">
                 <Warehouse className="w-4 h-4 text-secondary" />
                 <span className="text-xs font-semibold uppercase tracking-wider">
-                  Warehouse ({activeWarehouses.length})
+                  Warehouse ({warehouses.length})
                 </span>
               </div>
               {isWarehousesCollapsed ? (
@@ -303,39 +340,45 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, stores }
             
             {!isWarehousesCollapsed && (
               <div className="ml-2 mt-1 space-y-1">
-                {activeWarehouses.map((warehouse) => (
-                  <div key={warehouse.id} className="space-y-1">
-                    <button
-                      onClick={() => toggleWarehouse(warehouse.id)}
-                      className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
-                    >
-                      <div className="flex flex-col items-start">
-                        <span className="text-sm font-medium truncate">{warehouse.name}</span>
-                        <span className="text-xs text-gray-500">{warehouse.location}</span>
-                      </div>
-                      {expandedWarehouses.includes(warehouse.id) ? (
-                        <ChevronDown className="w-3 h-3 flex-shrink-0" />
-                      ) : (
-                        <ChevronRight className="w-3 h-3 flex-shrink-0" />
+                {warehouses.length > 0 ? (
+                  warehouses.map((warehouse) => (
+                    <div key={warehouse.id} className="space-y-1">
+                      <button
+                        onClick={() => toggleWarehouse(warehouse.id)}
+                        className="w-full flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className="text-sm font-medium truncate">{warehouse.name}</span>
+                          <span className="text-xs text-gray-500">{warehouse.location || 'No location'}</span>
+                        </div>
+                        {expandedWarehouses.includes(warehouse.id) ? (
+                          <ChevronDown className="w-3 h-3 flex-shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-3 h-3 flex-shrink-0" />
+                        )}
+                      </button>
+                      
+                      {expandedWarehouses.includes(warehouse.id) && (
+                        <div className="ml-4 space-y-1">
+                          <button
+                            onClick={() => setCurrentPage('warehouse-products')}
+                            className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
+                              currentPage === 'warehouse-products'
+                                ? 'bg-secondary/10 text-secondary'
+                                : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span>Manage Product</span>
+                          </button>
+                        </div>
                       )}
-                    </button>
-                    
-                    {expandedWarehouses.includes(warehouse.id) && (
-                      <div className="ml-4 space-y-1">
-                        <button
-                          onClick={() => setCurrentPage('warehouse-products')}
-                          className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all text-xs ${
-                            currentPage === 'warehouse-products'
-                              ? 'bg-secondary/10 text-secondary'
-                              : 'text-gray-600 hover:bg-gray-50'
-                          }`}
-                        >
-                          <span>Manage Product</span>
-                        </button>
-                      </div>
-                    )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-xs text-gray-500">
+                    No active warehouses
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>

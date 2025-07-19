@@ -5,13 +5,14 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-export interface UserProfile {
+export interface SupabaseUser {
   id: string
   email: string
-  display_name: string
+  fullname?: string
   avatar_url?: string
   provider: string
+  status: boolean
   birth_date?: string
-  created_at: string
-  updated_at: string
+  created_at?: string
+  updated_at?: string
 }

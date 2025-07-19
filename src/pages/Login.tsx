@@ -232,7 +232,10 @@ const Login: React.FC = () => {
           </button>
           {isLogin && (
             <div className="mt-4 text-center">
-              <button className="text-sm text-primary hover:text-primary/80 transition-colors">
+              <button 
+                onClick={() => window.location.href = '/reset-password'}
+                className="text-sm text-primary hover:text-primary/80 transition-colors"
+              >
                 Forgot your password?
               </button>
             </div>

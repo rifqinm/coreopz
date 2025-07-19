@@ -50,6 +50,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stores, setStores }) => {
     if (newStore.name.trim()) {
       const store = {
         id: stores.length + 1,
+        user_id: 'temp-user-id', // This should be replaced with actual user_id when creating via Supabase
         ...newStore
       };
       setStores([...stores, store]);

@@ -4,6 +4,24 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Handle client-side routing for standalone pages
+      (function() {
+        const path = window.location.pathname;
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode');
+        
+        // Only redirect non-standalone pages to root with page parameter
+        if (path !== '/' && 
+            path !== '/reset-password' && 
+            path !== '/new-password' && 
+            !path.startsWith('/?') && 
+            mode !== 'resetPassword') {
+          const page = path.substring(1);
+          window.location.replace('/?page=' + page);
+        }
+      })();
+    </script>
     <title>Coreopz Management</title>
   </head>
   <body>

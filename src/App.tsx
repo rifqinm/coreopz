@@ -5,7 +5,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
-import StockManagement from './pages/StockManagement';
 import ProductManagement from './pages/ProductManagement';
 import SalesManagement from './pages/SalesManagement';
 import WithdrawalManagement from './pages/WithdrawalManagement';
@@ -16,8 +15,38 @@ import IntegrationSheets from './pages/IntegrationSheets';
 import AccountingOverview from './pages/AccountingOverview';
 import AccountingGeneralJournal from './pages/AccountingGeneralJournal';
 import Profile from './pages/Profile';
+import ResetPassword from './pages/ResetPassword';
+import NewPassword from './pages/NewPassword';
+import ResetPasswordStandalone from './pages/ResetPasswordStandalone';
 
 function App() {
+  // Check if we're on a standalone page that doesn't require auth
+  const isStandalonePage = () => {
+    const path = window.location.pathname;
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    
+    return path === '/reset-password' || 
+           path === '/new-password' || 
+           (path === '/' && mode === 'resetPassword');
+  };
+
+  // If it's a standalone page, render it immediately without any auth checks
+  if (isStandalonePage()) {
+    const path = window.location.pathname;
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    
+    return (
+      <AuthProvider>
+        {path === '/reset-password' && <ResetPasswordStandalone />}
+        {path === '/new-password' && <NewPassword />}
+        {path === '/' && mode === 'resetPassword' && <NewPassword />}
+      </AuthProvider>
+    );
+  }
+
+  // For admin pages, continue with normal flow
   const [currentPage, setCurrentPage] = useState(() => {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('page') || 'dashboard';
@@ -33,7 +62,6 @@ function App() {
   const getPageTitle = (page: string) => {
     const titleMap: { [key: string]: string } = {
       'dashboard': 'Dashboard - Coreopz Management',
-      'stock': 'Stock Management - Coreopz Management',
       'product': 'Product Management - Coreopz Management',
       'sales': 'Sales Management - Coreopz Management',
       'withdrawal': 'Withdrawal Management - Coreopz Management',
@@ -47,12 +75,15 @@ function App() {
       'accounting-cashflow': 'Accounting - Cashflow - Coreopz Management',
       'accounting-receivables': 'Accounting - Piutang - Coreopz Management',
       'accounting-payables': 'Accounting - Hutang - Coreopz Management',
-      'accounting-cash': 'Accounting - Cash Management - Coreopz Management'
-      'profile': 'Profile - Coreopz Management'
+      'accounting-cash': 'Accounting - Cash Management - Coreopz Management',
+      'profile': 'Profile - Coreopz Management',
+      'reset-password': 'Reset Password - Coreopz Management',
+      'new-password': 'Set New Password - Coreopz Management'
     };
     
     return titleMap[page] || 'Coreopz Management';
   };
+
   const handlePageChange = (page: string) => {
     setCurrentPage(page);
     const url = new URL(window.location.href);
@@ -69,16 +100,16 @@ function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
-  const renderContent = () => {
+
   // Update document title when page changes
   useEffect(() => {
     document.title = getPageTitle(currentPage);
   }, [currentPage]);
+
+  const renderContent = () => {
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard stores={stores} setStores={setStores} />;
-      case 'stock':
-        return <StockManagement />;
       case 'product':
         return <ProductManagement />;
       case 'sales':
@@ -109,11 +140,16 @@ function App() {
         return <div className="p-6 text-center text-gray-500">Cash Management - Coming Soon</div>;
       case 'profile':
         return <Profile />;
+      case 'reset-password':
+        return <ResetPassword />;
+      case 'new-password':
+        return <NewPassword />;
       default:
         return <Dashboard stores={stores} setStores={setStores} />;
     }
   };
 
+  // For admin pages, wrap with ProtectedRoute
   return (
     <AuthProvider>
       <ProtectedRoute>
@@ -123,7 +159,6 @@ function App() {
             <Sidebar 
               currentPage={currentPage} 
               setCurrentPage={handlePageChange}
-              stores={stores}
             />
             <main className="flex-1 p-6">
               {renderContent()}

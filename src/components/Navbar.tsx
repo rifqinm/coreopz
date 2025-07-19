@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Navbar: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, supabaseUser, logout } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -47,9 +47,9 @@ const Navbar: React.FC = () => {
               className="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden bg-gradient-to-r from-primary to-tertiary">
-                {userProfile?.avatar_url ? (
+                {supabaseUser?.avatar_url ? (
                   <img 
-                    src={userProfile.avatar_url} 
+                    src={supabaseUser.avatar_url} 
                     alt="Profile" 
                     className="w-full h-full object-cover"
                   />
@@ -59,7 +59,7 @@ const Navbar: React.FC = () => {
               </div>
               <div className="text-left">
                 <p className="text-sm font-medium text-gray-700">
-                  {userProfile?.display_name || currentUser?.displayName || currentUser?.email || 'Admin'}
+                  {supabaseUser?.full_name || currentUser?.displayName || currentUser?.email || 'Admin'}
                 </p>
                 <p className="text-xs text-gray-500">Administrator</p>
               </div>
