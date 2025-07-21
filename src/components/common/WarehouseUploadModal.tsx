@@ -8,13 +8,15 @@ interface WarehouseUploadModalProps {
   onClose: () => void;
   warehouseId: string;
   warehouseName: string;
+  warehouseType: 'warehouse' | 'supplier';
 }
 
 const WarehouseUploadModal: React.FC<WarehouseUploadModalProps> = ({
   isOpen,
   onClose,
   warehouseId,
-  warehouseName
+  warehouseName,
+  warehouseType
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -25,7 +27,14 @@ const WarehouseUploadModal: React.FC<WarehouseUploadModalProps> = ({
     message: string;
   }>({ show: false, type: 'loading', message: '' });
 
-  const webhookUrl = 'https://doc.rifqinm.web.id/webhook/e9bade4a-cd61-4806-b9a3-bc0b57455640';
+  // Different webhook URLs based on warehouse type
+  const getWebhookUrl = () => {
+    if (warehouseType === 'supplier') {
+      return 'https://doc.rifqinm.web.id/webhook/6cfc165e-aa9c-4a9a-95e4-8d1259eb5717';
+    } else {
+      return 'https://doc.rifqinm.web.id/webhook/e9bade4a-cd61-4806-b9a3-bc0b57455640';
+    }
+  };
 
   const showToast = (type: 'success' | 'error' | 'loading', message: string) => {
     setToast({ show: true, type, message });
@@ -115,20 +124,20 @@ const WarehouseUploadModal: React.FC<WarehouseUploadModalProps> = ({
     }
 
     setIsUploading(true);
-    showToast('loading', 'Uploading products to warehouse...');
+    showToast('loading', `Uploading products to ${warehouseType}...`);
 
     try {
       const formData = new FormData();
       formData.append('data', selectedFile);
       formData.append('warehouseId', warehouseId);
 
-      const response = await fetch(webhookUrl, {
+      const response = await fetch(getWebhookUrl(), {
         method: 'POST',
         body: formData,
       });
 
       if (response.ok) {
-        showToast('success', 'Products uploaded successfully to warehouse!');
+        showToast('success', `Products uploaded successfully to ${warehouseType}!`);
         // Reset form after 2 seconds
         setTimeout(() => {
           setSelectedFile(null);

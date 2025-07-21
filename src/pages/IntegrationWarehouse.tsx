@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Warehouse, Plus, CheckCircle, XCircle, MapPin, MoreVertical, Eye, Edit, Trash2 } from 'lucide-react';
+import { Warehouse, Plus, CheckCircle, XCircle, MapPin, MoreVertical, Eye, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { supabaseAdmin } from '../config/supabaseAdmin';
 import { useAuth } from '../contexts/AuthContext';
 import CreateWarehouseModal from '../components/common/CreateWarehouseModal';
 import EditWarehouseModal from '../components/common/EditWarehouseModal';
+import Toast from '../components/common/Toast';
 
 interface WarehouseData {
   id: string;
@@ -11,6 +12,7 @@ interface WarehouseData {
   location: string | null;
   description: string | null;
   is_active: boolean;
+  type: 'warehouse' | 'supplier';
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +30,14 @@ const IntegrationWarehouse: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingWarehouse, setEditingWarehouse] = useState<WarehouseIntegration | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [warehouseToDelete, setWarehouseToDelete] = useState<WarehouseIntegration | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'loading';
+    message: string;
+  }>({ show: false, type: 'loading', message: '' });
   const { supabaseUser } = useAuth();
 
   useEffect(() => {
@@ -122,6 +132,14 @@ const IntegrationWarehouse: React.FC = () => {
     setEditingWarehouse(null);
   };
 
+  const showToast = (type: 'success' | 'error' | 'loading', message: string) => {
+    setToast({ show: true, type, message });
+  };
+
+  const hideToast = () => {
+    setToast({ show: false, type: 'loading', message: '' });
+  };
+
   const handleViewProducts = (warehouseId: string) => {
     const url = new URL(window.location.href);
     url.searchParams.set('page', `warehouse-products/${warehouseId}`);
@@ -129,17 +147,29 @@ const IntegrationWarehouse: React.FC = () => {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  const handleDeleteWarehouse = async (warehouseId: string) => {
-    if (!confirm('Are you sure you want to delete this warehouse? This action cannot be undone.')) {
-      return;
-    }
+  const openDeleteModal = (warehouse: WarehouseIntegration) => {
+    setWarehouseToDelete(warehouse);
+    setIsDeleteModalOpen(true);
+    setOpenDropdown(null);
+  };
+
+  const closeDeleteModal = () => {
+    setWarehouseToDelete(null);
+    setIsDeleteModalOpen(false);
+  };
+
+  const handleDeleteWarehouse = async () => {
+    if (!warehouseToDelete) return;
+
+    setIsDeleting(true);
+    showToast('loading', 'Deleting warehouse and all products...');
 
     try {
       // First delete all warehouse_products associated with this warehouse
       const { error: productsError } = await supabaseAdmin
         .from('warehouse_products')
         .delete()
-        .eq('warehouse_id', warehouseId);
+        .eq('warehouse_id', warehouseToDelete.id);
 
       if (productsError) {
         console.error('Error deleting warehouse products:', productsError);
@@ -150,17 +180,24 @@ const IntegrationWarehouse: React.FC = () => {
       const { error } = await supabaseAdmin
         .from('warehouses')
         .delete()
-        .eq('id', warehouseId);
+        .eq('id', warehouseToDelete.id);
 
       if (error) throw error;
 
       // Remove from local state
-      setIntegrations(prev => prev.filter(warehouse => warehouse.id !== warehouseId));
-      setOpenDropdown(null);
+      setIntegrations(prev => prev.filter(warehouse => warehouse.id !== warehouseToDelete.id));
       
-      alert('Warehouse and all associated products have been deleted successfully.');
+      showToast('success', `Warehouse "${warehouseToDelete.name}" and all products deleted successfully!`);
+      
+      // Close modal after success
+      setTimeout(() => {
+        closeDeleteModal();
+        hideToast();
+      }, 2000);
     } catch (err: any) {
-      alert('Failed to delete warehouse: ' + err.message);
+      showToast('error', 'Failed to delete warehouse: ' + err.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -266,9 +303,20 @@ const IntegrationWarehouse: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-gray-800">{integration.name}</h3>
                     <div className="flex items-center space-x-1">
-                      <MapPin className="w-3 h-3 text-gray-400" />
-                      <p className="text-sm text-gray-500">{integration.location || 'Location not set'}</p>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        integration.type === 'supplier' 
+                          ? 'bg-purple-100 text-purple-800' 
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {integration.type === 'supplier' ? 'Supplier' : 'Warehouse'}
+                      </span>
                     </div>
+                    {integration.location && (
+                      <div className="flex items-center space-x-1 mt-1">
+                        <MapPin className="w-3 h-3 text-gray-400" />
+                        <p className="text-sm text-gray-500">{integration.location}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -286,7 +334,11 @@ const IntegrationWarehouse: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Status:</span>
-                  <span className="font-medium capitalize">{integration.is_active ? 'Active' : 'Inactive'}</span>
+                  <span className="font-medium">{integration.is_active ? 'Active' : 'Inactive'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Type:</span>
+                  <span className="font-medium capitalize">{integration.type === 'supplier' ? 'Supplier' : 'Warehouse'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Created:</span>
@@ -294,7 +346,7 @@ const IntegrationWarehouse: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Location:</span>
-                  <span className="font-medium">{integration.location || 'Not set'}</span>
+                  <span className="font-medium">{integration.location || 'Not specified'}</span>
                 </div>
               </div>
               
@@ -330,7 +382,7 @@ const IntegrationWarehouse: React.FC = () => {
                             <span>Edit Warehouse</span>
                           </button>
                           <button
-                            onClick={() => handleDeleteWarehouse(integration.id)}
+                            onClick={() => openDeleteModal(integration)}
                             className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -372,6 +424,97 @@ const IntegrationWarehouse: React.FC = () => {
         }}
         warehouse={editingWarehouse}
         onWarehouseUpdated={handleWarehouseUpdated}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && warehouseToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Delete Warehouse</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-red-800 mb-2">
+                      You are about to delete "{warehouseToDelete.name}"
+                    </p>
+                    <div className="text-red-700 space-y-1">
+                      <p>• Warehouse will be permanently deleted</p>
+                      <p>• All {warehouseToDelete.productCount} products in this warehouse will be deleted</p>
+                      <p>• This action cannot be undone</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Warehouse ID:</span>
+                  <p className="font-medium text-gray-800">{warehouseToDelete.id}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Products:</span>
+                  <p className="font-medium text-gray-800">{warehouseToDelete.productCount} items</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Location:</span>
+                  <p className="font-medium text-gray-800">{warehouseToDelete.location || 'Not set'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Status:</span>
+                  <p className="font-medium text-gray-800">{warehouseToDelete.is_active ? 'Active' : 'Inactive'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeDeleteModal}
+                disabled={isDeleting}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteWarehouse}
+                disabled={isDeleting}
+                className="flex items-center space-x-2 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Warehouse</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      <Toast
+        show={toast.show}
+        type={toast.type}
+        message={toast.message}
+        onClose={hideToast}
       />
     </div>
   );

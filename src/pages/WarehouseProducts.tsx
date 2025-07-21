@@ -27,6 +27,7 @@ interface WarehouseData {
   location: string | null;
   description: string | null;
   is_active: boolean;
+  type: 'warehouse' | 'supplier';
 }
 
 interface WarehouseProductsProps {
@@ -38,6 +39,8 @@ const WarehouseProducts: React.FC<WarehouseProductsProps> = ({ warehouseId }) =>
   const [warehouse, setWarehouse] = useState<WarehouseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
@@ -55,7 +58,7 @@ const WarehouseProducts: React.FC<WarehouseProductsProps> = ({ warehouseId }) =>
     try {
       const { data, error } = await supabaseAdmin
         .from('warehouses')
-        .select('id, name, location, description, is_active')
+        .select('id, name, location, description, is_active, type')
         .eq('id', warehouseId)
         .single();
 
@@ -89,6 +92,15 @@ const WarehouseProducts: React.FC<WarehouseProductsProps> = ({ warehouseId }) =>
                          product.sku.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const handleDeleteProduct = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
@@ -290,7 +302,12 @@ const WarehouseProducts: React.FC<WarehouseProductsProps> = ({ warehouseId }) =>
       {/* Products Table */}
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">{`Products in ${warehouse?.name || 'Warehouse'}`}</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-800">{`Products in ${warehouse?.name || 'Warehouse'}`}</h2>
+            <div className="text-sm text-gray-600">
+              Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredProducts.length)} of {filteredProducts.length} products
+            </div>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -310,7 +327,7 @@ const WarehouseProducts: React.FC<WarehouseProductsProps> = ({ warehouseId }) =>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredProducts.map((product) => (
+              {paginatedProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50">
                   {columns.map((column) => (
                     <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -358,13 +375,61 @@ const WarehouseProducts: React.FC<WarehouseProductsProps> = ({ warehouseId }) =>
           </table>
         </div>
         
-        {filteredProducts.length === 0 && !loading && (
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                
+                {/* Page numbers */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                  if (pageNum > totalPages) return null;
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-1 border rounded-lg text-sm ${
+                        currentPage === pageNum
+                          ? 'bg-secondary text-white border-secondary'
+                          : 'border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {paginatedProducts.length === 0 && !loading && (
           <div className="text-center py-12">
             <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 text-lg">No products found</p>
             <p className="text-gray-400 text-sm mt-2">
               {products.length === 0 ? 
-                'This warehouse has no products yet' : 
+                'Add your first product to get started' :
                 'Try adjusting your search criteria'
               }
             </p>
@@ -378,6 +443,7 @@ const WarehouseProducts: React.FC<WarehouseProductsProps> = ({ warehouseId }) =>
         onClose={() => setIsUploadModalOpen(false)}
         warehouseId={warehouseId || ''}
         warehouseName={warehouse?.name || 'Warehouse'}
+        warehouseType={warehouse?.type || 'warehouse'}
       />
     </div>
   );

@@ -3,6 +3,13 @@ import { X, Store, Loader, AlertCircle } from 'lucide-react';
 import { supabaseAdmin } from '../../config/supabaseAdmin';
 import Toast from './Toast';
 
+interface Warehouse {
+  id: string;
+  name: string;
+  location: string | null;
+  type: 'warehouse' | 'supplier';
+}
+
 interface EditStoreModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,6 +25,7 @@ const EditStoreModal: React.FC<EditStoreModalProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [toast, setToast] = useState<{
     show: boolean;
     type: 'success' | 'error' | 'loading';
@@ -29,7 +37,8 @@ const EditStoreModal: React.FC<EditStoreModalProps> = ({
     store_type: 'online' as 'online' | 'offline',
     platform_enum: 'shopee' as 'shopee' | 'tokopedia' | 'lazada' | 'tiktok',
     description: '',
-    logo_url: ''
+    logo_url: '',
+    warehouse_id: ''
   });
 
   useEffect(() => {
@@ -39,10 +48,34 @@ const EditStoreModal: React.FC<EditStoreModalProps> = ({
         store_type: store.store_type || 'online',
         platform_enum: store.platform_enum || 'shopee',
         description: store.description || '',
-        logo_url: store.logo_url || ''
+        logo_url: store.logo_url || '',
+        warehouse_id: store.warehouse_id || ''
       });
     }
   }, [store]);
+
+  // Fetch warehouses when modal opens
+  useEffect(() => {
+    if (isOpen && store?.user_id) {
+      fetchWarehouses();
+    }
+  }, [isOpen, store]);
+
+  const fetchWarehouses = async () => {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('warehouses')
+        .select('id, name, location, type')
+        .eq('user_id', store?.user_id)
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setWarehouses(data || []);
+    } catch (err: any) {
+      console.error('Error fetching warehouses:', err);
+    }
+  };
 
   const showToast = (type: 'success' | 'error' | 'loading', message: string) => {
     setToast({ show: true, type, message });
@@ -93,7 +126,8 @@ const EditStoreModal: React.FC<EditStoreModalProps> = ({
         platform_enum: formData.platform_enum,
         description: formData.description.trim() || null,
         logo_url: formData.logo_url.trim() || null,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        warehouse_id: formData.warehouse_id || null
       };
 
       const { data, error } = await supabaseAdmin
@@ -129,7 +163,8 @@ const EditStoreModal: React.FC<EditStoreModalProps> = ({
         store_type: store.store_type || 'online',
         platform_enum: store.platform_enum || 'shopee',
         description: store.description || '',
-        logo_url: store.logo_url || ''
+        logo_url: store.logo_url || '',
+        warehouse_id: store.warehouse_id || ''
       });
     }
     setError('');
@@ -245,6 +280,26 @@ const EditStoreModal: React.FC<EditStoreModalProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Warehouse (Optional)
+              </label>
+              <select
+                name="warehouse_id"
+                value={formData.warehouse_id}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
+              >
+                <option value="">Select Warehouse</option>
+                {warehouses.map(warehouse => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name} {warehouse.location ? `(${warehouse.location})` : ''} - {warehouse.type === 'supplier' ? 'Supplier' : 'Warehouse'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description
               </label>
               <textarea
@@ -256,16 +311,6 @@ const EditStoreModal: React.FC<EditStoreModalProps> = ({
                 placeholder="Enter store description (optional)"
                 disabled={isLoading}
               />
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-start space-x-2">
-                <div className="w-4 h-4 bg-blue-500 rounded-full mt-0.5 flex-shrink-0"></div>
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium mb-1">Store ID: {store.id}</p>
-                  <p>Store ID cannot be changed after creation.</p>
-                </div>
-              </div>
             </div>
 
             <div className="flex justify-end space-x-3 pt-4">

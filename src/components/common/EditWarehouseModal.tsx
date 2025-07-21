@@ -27,7 +27,8 @@ const EditWarehouseModal: React.FC<EditWarehouseModalProps> = ({
   const [formData, setFormData] = useState({
     name: '',
     location: '',
-    description: ''
+    description: '',
+    type: 'warehouse' as 'warehouse' | 'supplier'
   });
 
   useEffect(() => {
@@ -35,7 +36,8 @@ const EditWarehouseModal: React.FC<EditWarehouseModalProps> = ({
       setFormData({
         name: warehouse.name || '',
         location: warehouse.location || '',
-        description: warehouse.description || ''
+        description: warehouse.description || '',
+        type: warehouse.type || 'warehouse'
       });
     }
   }, [warehouse]);
@@ -87,6 +89,7 @@ const EditWarehouseModal: React.FC<EditWarehouseModalProps> = ({
         name: formData.name.trim(),
         location: formData.location.trim() || null,
         description: formData.description.trim() || null,
+        type: formData.type,
         updated_at: new Date().toISOString()
       };
 
@@ -121,7 +124,8 @@ const EditWarehouseModal: React.FC<EditWarehouseModalProps> = ({
       setFormData({
         name: warehouse.name || '',
         location: warehouse.location || '',
-        description: warehouse.description || ''
+        description: warehouse.description || '',
+        type: warehouse.type || 'warehouse'
       });
     }
     setError('');
@@ -198,6 +202,23 @@ const EditWarehouseModal: React.FC<EditWarehouseModalProps> = ({
                   disabled={isLoading}
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Type *
+              </label>
+              <select
+                name="type"
+                value={formData.type}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                required
+                disabled={isLoading}
+              >
+                <option value="warehouse">Warehouse</option>
+                <option value="supplier">Supplier</option>
+              </select>
             </div>
 
             <div>

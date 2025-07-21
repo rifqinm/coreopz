@@ -36,6 +36,9 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isMatchingSkus, setIsMatchingSkus] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMarketplace, setFilterMarketplace] = useState('all');
@@ -90,6 +93,48 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
     
     return matchesSearch && matchesMarketplace;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleMatchSkus = async () => {
+    if (!store?.warehouse_id) {
+      alert('Store must have a warehouse assigned to match SKUs');
+      return;
+    }
+
+    setIsMatchingSkus(true);
+    try {
+      const response = await fetch('https://doc.rifqinm.web.id/webhook/5e40176a-121e-49d0-ada6-87384bbdda7c', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          store_id: storeId,
+          warehouse_id: store.warehouse_id
+        })
+      });
+
+      if (response.ok) {
+        alert('SKU matching completed successfully!');
+        // Refresh products after matching
+        fetchProducts();
+      } else {
+        throw new Error(`Failed to match SKUs: ${response.status}`);
+      }
+    } catch (error: any) {
+      alert('Failed to match SKUs: ' + error.message);
+    } finally {
+      setIsMatchingSkus(false);
+    }
+  };
 
   const handleDeleteProduct = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
@@ -205,6 +250,25 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
             <Upload className="w-5 h-5" />
             <span>Upload Products</span>
           </button>
+          {store?.warehouse_id && (
+            <button 
+              onClick={handleMatchSkus}
+              disabled={isMatchingSkus}
+              className="flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+            >
+              {isMatchingSkus ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Matching...</span>
+                </>
+              ) : (
+                <>
+                  <Package className="w-5 h-5" />
+                  <span>Match SKU</span>
+                </>
+              )}
+            </button>
+          )}
           <button 
             className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
           >
@@ -286,7 +350,12 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
       {/* Products Table */}
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">Marketplace Products</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-800">Marketplace Products</h2>
+            <div className="text-sm text-gray-600">
+              Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredProducts.length)} of {filteredProducts.length} products
+            </div>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -310,7 +379,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredProducts.map((product) => (
+              {paginatedProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -422,9 +491,57 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ storeId }) => {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                
+                {/* Page numbers */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                  if (pageNum > totalPages) return null;
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-1 border rounded-lg text-sm ${
+                        currentPage === pageNum
+                          ? 'bg-primary text-white border-primary'
+                          : 'border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {filteredProducts.length === 0 && !loading && (
+      {paginatedProducts.length === 0 && !loading && (
         <div className="text-center py-12">
           <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-500 text-lg">No products found</p>

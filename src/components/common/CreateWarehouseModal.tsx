@@ -27,7 +27,8 @@ const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
   const [formData, setFormData] = useState({
     name: '',
     location: '',
-    description: ''
+    description: '',
+    type: 'warehouse' as 'warehouse' | 'supplier'
   });
 
   const showToast = (type: 'success' | 'error' | 'loading', message: string) => {
@@ -83,6 +84,7 @@ const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
         name: formData.name.trim(),
         location: formData.location.trim() || null,
         description: formData.description.trim() || null,
+        type: formData.type,
         user_id: supabaseUser.id,
         is_active: true,
         created_at: new Date().toISOString(),
@@ -120,7 +122,8 @@ const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
     setFormData({
       name: '',
       location: '',
-      description: ''
+      description: '',
+      type: 'warehouse'
     });
     setError('');
     hideToast();
@@ -196,6 +199,23 @@ const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
                   disabled={isLoading}
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Type *
+              </label>
+              <select
+                name="type"
+                value={formData.type}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                required
+                disabled={isLoading}
+              >
+                <option value="warehouse">Warehouse</option>
+                <option value="supplier">Supplier</option>
+              </select>
             </div>
 
             <div>

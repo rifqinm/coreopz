@@ -4,6 +4,13 @@ import { supabaseAdmin } from '../../config/supabaseAdmin';
 import { useAuth } from '../../contexts/AuthContext';
 import Toast from './Toast';
 
+interface Warehouse {
+  id: string;
+  name: string;
+  location: string | null;
+  type: 'warehouse' | 'supplier';
+}
+
 interface CreateStoreModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,6 +25,7 @@ const CreateStoreModal: React.FC<CreateStoreModalProps> = ({
   const { currentUser, supabaseUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [toast, setToast] = useState<{
     show: boolean;
     type: 'success' | 'error' | 'loading';
@@ -29,8 +37,32 @@ const CreateStoreModal: React.FC<CreateStoreModalProps> = ({
     store_type: 'online' as 'online' | 'offline',
     platform_enum: 'shopee' as 'shopee' | 'tokopedia' | 'lazada' | 'tiktok',
     description: '',
-    logo_url: ''
+    logo_url: '',
+    warehouse_id: ''
   });
+
+  // Fetch warehouses when modal opens
+  React.useEffect(() => {
+    if (isOpen && supabaseUser?.id) {
+      fetchWarehouses();
+    }
+  }, [isOpen, supabaseUser]);
+
+  const fetchWarehouses = async () => {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('warehouses')
+        .select('id, name, location, type')
+        .eq('user_id', supabaseUser?.id)
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setWarehouses(data || []);
+    } catch (err: any) {
+      console.error('Error fetching warehouses:', err);
+    }
+  };
 
   const showToast = (type: 'success' | 'error' | 'loading', message: string) => {
     setToast({ show: true, type, message });
@@ -90,7 +122,8 @@ const CreateStoreModal: React.FC<CreateStoreModalProps> = ({
         user_email: currentUser?.email || '',
         user_id: supabaseUser.id,
         status: true,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        warehouse_id: formData.warehouse_id || null
       };
 
       const { data, error } = await supabaseAdmin
@@ -126,7 +159,8 @@ const CreateStoreModal: React.FC<CreateStoreModalProps> = ({
       store_type: 'online',
       platform_enum: 'shopee',
       description: '',
-      logo_url: ''
+      logo_url: '',
+      warehouse_id: ''
     });
     setError('');
     hideToast();
@@ -241,6 +275,26 @@ const CreateStoreModal: React.FC<CreateStoreModalProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Warehouse (Optional)
+              </label>
+              <select
+                name="warehouse_id"
+                value={formData.warehouse_id}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
+              >
+                <option value="">Select Warehouse</option>
+                {warehouses.map(warehouse => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name} {warehouse.location ? `(${warehouse.location})` : ''} - {warehouse.type === 'supplier' ? 'Supplier' : 'Warehouse'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description
               </label>
               <textarea
@@ -252,16 +306,6 @@ const CreateStoreModal: React.FC<CreateStoreModalProps> = ({
                 placeholder="Enter store description (optional)"
                 disabled={isLoading}
               />
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-start space-x-2">
-                <div className="w-4 h-4 bg-blue-500 rounded-full mt-0.5 flex-shrink-0"></div>
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium mb-1">8-digit Store ID will be auto-generated</p>
-                  <p>A unique 8-digit store ID will be automatically created when you save this store.</p>
-                </div>
-              </div>
             </div>
 
             <div className="flex justify-end space-x-3 pt-4">
