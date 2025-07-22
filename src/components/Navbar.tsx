@@ -1,10 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { User, Settings, LogOut, ChevronDown, UserCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navbar: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { currentUser, supabaseUser, logout } = useAuth();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    if (isProfileOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isProfileOpen]);
 
   const handleLogout = async () => {
     try {
@@ -25,23 +43,17 @@ const Navbar: React.FC = () => {
 
   return (
     <div>
-      <nav className="bg-white shadow-lg border-b border-gray-200">
+      <nav className="bg-white shadow-lg border-b border-gray-200 fixed top-0 left-64 right-0 z-20">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden bg-white shadow-md">
-              <img 
-                src="https://bdtmmupmfnowetokvdwx.supabase.co/storage/v1/object/public/avatars/avatars/logome.png" 
-                alt="Logo" 
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-tertiary bg-clip-text text-transparent">
-              Coreopz Dashboard
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">
+              Dashboard
             </h1>
+            <p className="text-sm text-gray-600">Welcome to your management dashboard</p>
           </div>
           
-          <div className="relative">
+          <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className="flex items-center space-x-3 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"

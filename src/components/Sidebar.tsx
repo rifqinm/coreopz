@@ -178,7 +178,23 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
   ];
 
   return (
-    <aside className="w-64 bg-white shadow-lg border-r border-gray-200 min-h-screen">
+    <aside className="w-64 bg-white shadow-lg border-r border-gray-200 h-screen fixed top-0 left-0 z-30 overflow-y-auto">
+      {/* Header Space */}
+      <div className="h-20 flex items-center justify-center border-b border-gray-100">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-white shadow-md">
+            <img 
+              src="https://bdtmmupmfnowetokvdwx.supabase.co/storage/v1/object/public/avatars/avatars/logome.png" 
+              alt="Logo" 
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <span className="text-lg font-bold bg-gradient-to-r from-primary to-tertiary bg-clip-text text-transparent">
+            Coreopz
+          </span>
+        </div>
+      </div>
+      
       <div className="p-3">
         <nav className="space-y-1">
           {/* Main Menu Items */}
